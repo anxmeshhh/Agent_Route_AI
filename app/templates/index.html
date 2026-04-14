@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% block title %}AgentRoute AI — Land & Maritime AI Routing{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+
+    <!-- ═══ TOP HEADER ═══ -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo-icon">🗺</div>
+            <span class="logo-text">AgentRoute<span style="color:#818cf8">AI</span></span>
+            <span class="badge-agentic">AGENTIC</span>
+        </div>
+
+        <div class="header-center">
+            <div class="pipeline-wrap">
+                <div class="pipeline-node" data-agent="intake">
+                    <span class="node-icon">📦</span><span class="node-label">INTAKE</span>
+                </div><div class="node-line"></div>
+                <div class="pipeline-node" data-agent="router">
+                    <span class="node-icon">🧠</span><span class="node-label">ROUTER</span>
+                </div><div class="node-line"></div>
+                <div class="pipeline-node" data-agent="weather">
+                    <span class="node-icon">🌤</span><span class="node-label">WEATHER</span>
+                </div><div class="node-line"></div>
+                <div class="pipeline-node" data-agent="news">
+                    <span class="node-icon">📰</span><span class="node-label">NEWS</span>
+                </div><div class="node-line"></div>
+                <div class="pipeline-node" data-agent="historical">
+                    <span class="node-icon">📊</span><span class="node-label">HISTORY</span>
+                </div><div class="node-line"></div>
+                <div class="pipeline-node" data-agent="vessel">
+                    <span class="node-icon">🚗</span><span class="node-label">VEHICLE</span>
+                </div><div class="node-line"></div>
+                <div class="pipeline-node" data-agent="port_intel">
+                    <span class="node-icon">📍</span><span class="node-label">INTEL</span>
+                </div><div class="node-line"></div>
+                <div class="pipeline-node" data-agent="brain">
+                    <span class="node-icon">⚡</span><span class="node-label">BRAIN</span>
+                </div>
+            </div>
+            <div class="agent-progress-wrap">
+                <div class="agent-progress-bar">
+                    <div class="agent-progress-fill" id="agent-progress-fill"></div>
+                </div>
+                <span class="agent-progress-label" id="agent-progress-label">0/8 agents</span>
+                <span class="elapsed-timer" id="elapsed-timer">0.0s</span>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <span class="system-status"><span class="status-dot"></span> System Online</span>
+        </div>
+    </header>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="main-grid">
+
+        <!-- ════════════════════════════════════ LEFT SIDEBAR ════════════════════════════════════ -->
+        <aside class="sidebar sidebar-left">
+
+            <!-- Query Card — fixed height, never grows -->
+            <div class="panel-card sidebar-query-card">
+                <div class="panel-header">
+                    <span class="panel-icon orange-bg">🗺</span>
+                    <div>
+                        <h2 class="panel-title">Route Intelligence Query</h2>
+                        <div class="panel-subtitle">Land · Maritime · AI-powered routing</div>
+                    </div>
+                </div>
+
+                <div class="route-type-row">
+                    <button type="button" class="route-type-btn active road" id="btn-land" onclick="setRouteType('land')">🚗 Road</button>
+                    <button type="button" class="route-type-btn sea"          id="btn-sea"  onclick="setRouteType('sea')">🚢 Maritime</button>
+                    <button type="button" class="route-type-btn air"          id="btn-air"  onclick="setRouteType('air')">✈ Air</button>
+                </div>
+
+                <form id="analysis-form">
+                    <textarea id="query-input" class="query-textarea" rows="3"
+                        placeholder="e.g. 'Container shipment from Shanghai to Rotterdam via sea in 28 days'"></textarea>
+
+                    <div class="chip-row" id="example-chips">
+                        <button type="button" class="example-chip india" data-query="Pharmaceutical shipment from Delhi to Thiruvananthapuram Kerala in 3 days urgent">🇮🇳 Delhi→Kerala</button>
+                        <button type="button" class="example-chip india" data-query="Electronics cargo from Mumbai to Bangalore by road in 2 days">🇮🇳 Mumbai→Bangalore</button>
+                        <button type="button" class="example-chip india" data-query="General cargo from Delhi to Kolkata by road NH19 in 48 hours">🇮🇳 Delhi→Kolkata</button>
+                        <button type="button" class="example-chip"       data-query="Electronics from Shanghai to Rotterdam via Suez Canal 28 days transit">🌊 Shanghai→Rotterdam</button>
+                        <button type="button" class="example-chip"       data-query="Automotive parts from Hamburg to Mumbai in 14 days maritime">🌊 Hamburg→Mumbai</button>
+                    </div>
+
+                    <button type="submit" id="analyze-btn" class="btn-primary">
+                        <span id="btn-text">⚡ Analyse &amp; Simulate Route</span>
+                        <span id="btn-spinner" class="spin-ring hidden"></span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Live Agent Reasoning — FILLS remaining space, independent scroll -->
+            <div class="panel-card sidebar-reasoning-card">
+                <div class="panel-header">
+                    <span class="panel-icon pink-bg">🧠</span>
+                    <div style="flex:1;min-width:0;">
+                        <h2 class="panel-title">Live Agent Reasoning</h2>
+                        <div class="panel-subtitle" id="running-current-action">Idle — awaiting query</div>
+                    </div>
+                    <button type="button" class="icon-btn" id="clear-logs-btn" title="Clear logs">✕</button>
+                </div>
+
+                <!-- AI Decision Banner -->
+                <div class="ai-decision-banner hidden" id="ai-decision-banner">
+                    <div class="ai-decision-label">⚡ AI Route Decision</div>
+                    <div class="ai-decision-text" id="ai-decision-text">—</div>
+                </div>
+
+                <!-- Parallel agents indicator -->
+                <div class="parallel-agents-row hidden" id="parallel-agents-row">
+                    <span class="parallel-label">🔀 PARALLEL</span>
+                    <div class="parallel-agent-chips" id="parallel-chips"></div>
+                </div>
+
+                <!-- Log entries with its own scroll -->
+                <div class="agent-logs-container" id="agent-log-entries">
+                    <div class="log-empty-state" id="log-empty">
+                        <span class="empty-icon">🗺</span>
+                        <div class="empty-title">Agentic AI Ready</div>
+                        <div class="empty-sub">Submit a query to watch 8 agents reason in real-time</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Analyses — FIXED height, never expands -->
+            <div class="panel-card sidebar-history-card">
+                <div class="panel-header" style="margin-bottom:6px;">
+                    <span class="panel-icon teal-bg">📋</span>
+                    <h2 class="panel-title">Recent Analyses</h2>
+                    <button type="button" id="refresh-history" class="icon-btn ml-auto" title="Refresh">↺</button>
+                </div>
+                <div class="history-list-compact" id="history-list">
+                    <div class="placeholder-text">No recent analyses</div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- ════════════════════════════════════ CENTER MAP ════════════════════════════════════ -->
+        <section class="map-section">
+            <div id="world-map-bg"></div>
+
+            <!-- Scan-line overlay -->
+            <div class="map-scan-overlay hidden" id="map-scan-line"></div>
+
+            <!-- AI Decision overlay (center-top) -->
+            <div class="ai-map-decision hidden" id="ai-map-decision">
+                <div class="ai-map-decision-label">⚡ Route Decision</div>
+                <div class="ai-map-decision-text" id="ai-map-decision-text">—</div>
+            </div>
+
+            <!-- Route overlay card (top-right) -->
+            <div class="map-floating-overlay hidden" id="map-overlay-card">
+                <div class="overlay-route" id="map-overlay-route-text">—</div>
+                <div class="overlay-meta"  id="map-overlay-meta">—</div>
+                <div style="margin-top:5px;display:flex;gap:5px;align-items:center;">
+                    <span class="overlay-badge hidden" id="map-route-badge"></span>
+                    <span class="overlay-badge hidden road-badge" id="map-km-badge"></span>
+                </div>
+            </div>
+
+            <!-- Simulation Speed Control (top-left of map) -->
+            <div class="sim-speed-control hidden" id="sim-speed-control">
+                <span class="sim-speed-label">🚗 Speed</span>
+                <input type="range" id="sim-speed-slider" min="1" max="5" value="3" class="sim-slider">
+                <span class="sim-speed-val" id="sim-speed-val">3×</span>
+            </div>
+
+            <!-- MISSION CONTROL HUD -->
+            <div class="mission-control-hud hidden" id="mission-control-hud">
+                <div class="hud-left">
+                    <span class="hud-label">ACTIVE AGENT</span>
+                    <div class="hud-agent-row">
+                        <span class="hud-agent-icon" id="hud-agent-icon">⚙</span>
+                        <span class="hud-agent-name" id="hud-agent-name">SYSTEM</span>
+                        <span class="hud-dot" id="hud-status-dot"></span>
+                    </div>
+                    <div class="hud-agent-action" id="hud-agent-action">Idle</div>
+                </div>
+
+                <div class="hud-center">
+                    <span class="hud-label">ROUTE PROGRESS</span>
+                    <div class="ship-progress-track">
+                        <div class="ship-progress-bar-fill" id="ship-progress-bar"></div>
+                    </div>
+                    <div class="hud-route-stats">
+                        <span class="ship-progress-label" id="ship-progress-label">0% en route</span>
+                        <span class="hud-km-counter" id="hud-km-counter">0 km</span>
+                    </div>
+                    <!-- Current location badge -->
+                    <div class="hud-current-loc hidden" id="hud-current-loc">
+                        <span class="hud-loc-icon">📍</span>
+                        <span class="hud-loc-text" id="hud-loc-text">—</span>
+                    </div>
+                </div>
+
+                <div class="hud-right">
+                    <span class="hud-label">ACTIONS</span>
+                    <button type="button" class="btn-hud-sim hidden" id="simulate-btn" onclick="runShipSimulation()">▶ Replay Route</button>
+                    <div class="hud-coords" id="hud-coords">🌍 Route Analysis Active</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════════════════════════════════════ RIGHT SIDEBAR ════════════════════════════════════ -->
+        <aside class="sidebar sidebar-right">
+
+            <!-- Brand Card (shown before results) -->
+            <div class="panel-card text-center brand-panel" id="brand-panel">
+                <div class="large-shield">🗺</div>
+                <h1 class="brand-title">AgentRoute<span class="text-blue">AI</span></h1>
+                <div class="brand-subtitle">8-Agent Agentic Route Intelligence</div>
+
+                <div class="agent-pills-grid gap-top">
+                    <span class="agent-pill intake">📦 Intake</span>
+                    <span class="agent-pill weather">🌤 Weather</span>
+                    <span class="agent-pill news">📰 News</span>
+                    <span class="agent-pill history">📊 Historical</span>
+                    <span class="agent-pill vessel">🚗 Vehicle</span>
+                    <span class="agent-pill port">📍 Route Intel</span>
+                    <span class="agent-pill geo">🌍 Geopolitical</span>
+                </div>
+                <div class="gap-top"><span class="agent-pill brain">⚡ LLM Brain</span></div>
+
+                <div class="feature-checks gap-top">
+                    <span><span class="dot pink"></span>LLM-Routed</span>
+                    <span><span class="dot cyan"></span>Cross-Validated</span>
+                    <span><span class="dot purple"></span>Memory</span>
+                </div>
+
+                <div class="brand-cta gap-top">
+                    Try <strong>Delhi → Kerala</strong> or <strong>Shanghai → Rotterdam</strong><br>
+                    to see AI routing + simulation
+                </div>
+            </div>
+
+            <!-- Results State (replaces brand after analysis) -->
+            <div class="results-container hidden" id="results-state">
+
+                <!-- KPI Score -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <span class="panel-icon blue-bg">📊</span>
+                        <h2 class="panel-title">Risk Assessment</h2>
+                        <span class="risk-pill ml-auto" id="risk-level-badge">--</span>
+                    </div>
+                    <div class="kpi-row">
+                        <div class="kpi-score">
+                            <span class="score-val" id="gauge-score">0</span><span class="score-den">/100</span>
+                        </div>
+                        <div class="kpi-meta">
+                            <div>ETA: <span class="text-white" id="risk-eta">--</span></div>
+                            <div>Cargo: <span class="text-white" id="risk-cargo">--</span></div>
+                            <div>Mode: <span class="text-white" id="risk-mode">--</span></div>
+                        </div>
+                    </div>
+                    <div class="confidence-row hidden" id="confidence-row">
+                        <span class="conf-label">AI Confidence</span>
+                        <span class="conf-val" id="confidence-val">--</span>
+                    </div>
+                </div>
+
+                <!-- Agents completed summary -->
+                <div class="panel-card panel-small" id="agents-summary-card">
+                    <div class="section-title">Agents Executed</div>
+                    <div class="agents-summary-row" id="agents-summary-row"></div>
+                </div>
+
+                <!-- Route Intelligence -->
+                <div class="panel-card hidden" id="route-intel-strip">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <h3 class="section-title" style="margin:0">Route Intelligence</h3>
+                        <span id="intel-data-source" style="font-size:9px;color:var(--text-dim);font-family:monospace;"></span>
+                    </div>
+                    <div class="intel-grid">
+                        <div class="intel-box">
+                            <div class="intel-label">Delay Cost Est.</div>
+                            <div class="intel-val text-orange" id="strip-cost">—</div>
+                        </div>
+                        <div class="intel-box">
+                            <div class="intel-label">Delay Prob.</div>
+                            <div class="intel-val text-orange" id="strip-delay-prob">—</div>
+                        </div>
+                        <div class="intel-box">
+                            <div class="intel-label">Opt. Departure</div>
+                            <div class="intel-val text-green" id="strip-depart">—</div>
+                            <div style="font-size:9px;margin-top:2px;" id="strip-depart-rec"></div>
+                        </div>
+                        <div class="intel-box">
+                            <div class="intel-label">Alt. Route</div>
+                            <div class="intel-val text-cyan" id="strip-alt-route">—</div>
+                        </div>
+                    </div>
+                    <!-- 5-Day OWM Weather Forecast (populated by JS) -->
+                    <div id="owm-forecast-row" style="display:none;margin-top:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">
+                        <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">
+                            📡 5-Day Destination Forecast
+                        </div>
+                        <div id="owm-forecast-cards" style="display:flex;gap:5px;overflow-x:auto;"></div>
+                    </div>
+                </div>
+
+                <!-- Risk Factors -->
+                <div class="panel-card">
+                    <h3 class="section-title">Critical Risk Factors</h3>
+                    <div class="factors-list" id="factors-list"></div>
+                </div>
+
+                <!-- Reasoning -->
+                <div class="panel-card">
+                    <h3 class="section-title">AI Synthesised Reasoning</h3>
+                    <div class="reasoning-text" id="reasoning-text"></div>
+                </div>
+
+            </div><!-- /results-state -->
+        </aside>
+
+    </main>
+</div>
+{% endblock %}

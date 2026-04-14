@@ -1,0 +1,33 @@
+# ── Python ────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Environment ───────────────────────────────
+.env
+.env.local
+.env.*.local
+*.env
+
+# ── IDE / Editor ──────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Virtual Environments ─────────────────────
+venv/
+.venv/
+env/
+
+# ── Logs & Data ──────────────────────────────
+*.log
+*.sqlite3
