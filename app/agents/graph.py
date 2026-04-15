@@ -326,6 +326,16 @@ class AgentGraph:
         # Build final output
         final_result["intake"] = intake_result
         final_result["session_id"] = self.session_id
+        # Propagate dynamic ETA fields to top level for frontend
+        final_result["eta_days"] = intake_result.get("eta_days")
+        final_result["eta_hours"] = intake_result.get("eta_hours")
+        final_result["eta_source"] = intake_result.get("eta_source")
+        # Propagate transport mode + calibrated risk fields
+        final_result["transport_mode"] = final_result.get("transport_mode") or intake_result.get("transport_mode")
+        final_result["risk_probability"] = final_result.get("risk_probability")
+        final_result["risk_explanation"] = final_result.get("risk_explanation")
+        final_result["decision_synthesis"] = final_result.get("decision_synthesis")
+        final_result["trade_offs"] = final_result.get("trade_offs")
         final_result["confidence_score"] = state["confidence_score"]
         final_result["confidence_breakdown"] = state["confidence_breakdown"]
         final_result["needs_human_review"] = state["needs_human_review"]

@@ -259,6 +259,11 @@
                             <div>Mode: <span class="text-white" id="risk-mode">--</span></div>
                         </div>
                     </div>
+                    <!-- Risk Explanation + Probability -->
+                    <div class="risk-explanation-row" id="risk-explanation-row" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:8px;border-left:3px solid var(--text-dim);">
+                        <div id="risk-explanation" style="font-size:11px;color:#e2e8f0;line-height:1.4;">--</div>
+                        <div style="margin-top:4px;font-size:10px;color:var(--text-dim);">Disruption Probability: <span class="text-white" style="font-weight:600;" id="risk-probability">--</span></div>
+                    </div>
                     <div class="confidence-row hidden" id="confidence-row">
                         <span class="conf-label">AI Confidence</span>
                         <span class="conf-val" id="confidence-val">--</span>
@@ -311,10 +316,20 @@
                     <div class="factors-list" id="factors-list"></div>
                 </div>
 
-                <!-- Reasoning -->
+                <!-- Decision Synthesis -->
                 <div class="panel-card">
-                    <h3 class="section-title">AI Synthesised Reasoning</h3>
-                    <div class="reasoning-text" id="reasoning-text"></div>
+                    <h3 class="section-title">Decision Synthesis</h3>
+                    <div class="reasoning-text" id="decision-synthesis-text" style="font-size:12px;line-height:1.5;color:#e2e8f0;"></div>
+                    <div id="trade-offs-row" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(99,102,241,0.08);border-radius:6px;border-left:3px solid #818cf8;">
+                        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:#818cf8;margin-bottom:4px;">⚖ Trade-offs</div>
+                        <div id="trade-offs-text" style="font-size:11px;color:#cbd5e1;line-height:1.4;"></div>
+                    </div>
+                </div>
+
+                <!-- Alt Route Comparison -->
+                <div class="panel-card hidden" id="alt-route-comparison">
+                    <h3 class="section-title">Route Comparison</h3>
+                    <div id="alt-route-comparison-content" style="font-size:11px;"></div>
                 </div>
 
             </div><!-- /results-state -->

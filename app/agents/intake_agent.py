@@ -252,8 +252,16 @@ class IntakeAgent:
             result["eta_days"] = v
             logs.append({"agent": "intake", "action": f"ETA: {v} day(s)", "status": "success"})
         else:
-            result["eta_days"] = 7
-            logs.append({"agent": "intake", "action": "ETA defaulted to 7 days", "status": "skipped"})
+            # Dynamic ETA: compute from real route distance via OSRM
+            computed_eta = self._compute_eta_from_route(
+                result.get("origin_port"), result.get("port")
+            )
+            result["eta_days"] = computed_eta["days"]
+            result["eta_hours"] = computed_eta.get("hours")
+            result["eta_source"] = computed_eta["source"]
+            logs.append({"agent": "intake",
+                         "action": f"ETA computed: {computed_eta['days']} day(s) ({computed_eta['source']})",
+                         "status": "success" if computed_eta["source"] != "default" else "skipped"})
 
         # ══════════════════════════════════════════════════════════
         # CARGO TYPE
@@ -302,3 +310,44 @@ class IntakeAgent:
             f"eta={result['eta_days']}d cargo={result['cargo_type']}"
         )
         return result
+
+    @staticmethod
+    def _compute_eta_from_route(origin: str, dest: str) -> dict:
+        """
+        Compute real ETA from OSRM route distance.
+        Returns {days, hours, source} — never returns None.
+        """
+        if not origin or not dest:
+            return {"days": 7, "hours": None, "source": "default"}
+
+        try:
+            import requests as _req
+            from ..routes._geocoder import geocode
+
+            og = geocode(origin)
+            dg = geocode(dest)
+            if not og or not dg:
+                return {"days": 7, "hours": None, "source": "default"}
+
+            # Try OSRM for real road distance/duration
+            url = (
+                f"http://router.project-osrm.org/route/v1/driving/"
+                f"{og['lon']},{og['lat']};{dg['lon']},{dg['lat']}"
+                f"?overview=false&steps=false"
+            )
+            resp = _req.get(url, timeout=8, headers={"User-Agent": "AgentRouteAI/3.0"})
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("code") == "Ok" and data.get("routes"):
+                    route = data["routes"][0]
+                    hours = round(route["duration"] / 3600, 1)
+                    km = round(route["distance"] / 1000)
+                    # Road freight: ~400km/day average (includes rest stops)
+                    days = max(1, round(km / 400))
+                    logger.info(f"[intake] OSRM ETA: {origin}→{dest}: {km}km, {hours}h, ~{days}d")
+                    return {"days": days, "hours": hours, "source": "osrm_live"}
+
+        except Exception as e:
+            logger.warning(f"[intake] ETA computation failed: {e}")
+
+        return {"days": 7, "hours": None, "source": "default"}

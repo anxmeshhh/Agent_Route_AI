@@ -267,14 +267,16 @@ async function renderRouteMap(origin, dest, riskScore) {
         _routeLayers.push(L.polyline(altPts, { color: '#22c55e', weight: 2, opacity: 0.6, dashArray: '8,14' }).addTo(_bgMap));
         // Plan B label marker at midpoint
         const mid = Math.floor(altPts.length / 2);
+        const altExtraKm = alt.extra_km ?? alt.delta_km ?? 0;
+        const altExtraTime = alt.extra_days != null ? `+${alt.extra_days}d` : (alt.delta_hours != null ? `+${alt.delta_hours}h` : '');
         const altIcon = L.divIcon({
             className: '',
-            html: `<div class="alt-route-label">🛡 Plan B: ${alt.label}<br>+${alt.extra_km?.toLocaleString()} km · +${alt.extra_days}d</div>`,
+            html: `<div class="alt-route-label">🛡 Plan B: ${alt.label}<br>${altExtraKm > 0 ? '+' : ''}${altExtraKm?.toLocaleString()} km · ${altExtraTime}</div>`,
             iconSize: [180, 40], iconAnchor: [90, 20],
         });
         _routeLayers.push(L.marker(altPts[mid], { icon: altIcon }).addTo(_bgMap));
         console.log('[route] Plan B drawn:', alt.label, alt.total_km, 'km');
-        appendLog('graph', `🛡 Plan B available: ${alt.label} (+${alt.extra_km?.toLocaleString()} km, +${alt.extra_days}d) — ${alt.reason}`, 'success');
+        appendLog('graph', `🛡 Plan B available: ${alt.label} (${altExtraKm > 0 ? '+' : ''}${altExtraKm?.toLocaleString()} km, ${altExtraTime}) — ${alt.reason}`, 'success');
     }
 
     // ── Weather badge on map if real weather available ─────────
@@ -497,14 +499,15 @@ function _buildCheckpoints() {
     for (let i = 1; i < rawLen - 1; i++) {
         const frac = i / (rawLen - 1);
         const step = Math.floor(frac * (denseLen - 1));
-        result.push({ step, name: _vehicleRawWps[i].name || `Checkpoint ${i}`, lat: _vehicleRawWps[i].lat, lon: _vehicleRawWps[i].lon });
+        result.push({ step, rawIdx: i, name: _vehicleRawWps[i].name || `Checkpoint ${i}`, lat: _vehicleRawWps[i].lat, lon: _vehicleRawWps[i].lon });
     }
     return result;
 }
 
-function _fireCheckpoint({ name, lat, lon }) {
+function _fireCheckpoint({ name, lat, lon, rawIdx }) {
     // Use BACKEND ai_reasoning if available, else fall back to client-side
-    const wp = _vehicleRawWps?.find(w => w.name === name);
+    // Look up by index (reliable) — name-based .find() fails for unnamed OSRM waypoints
+    const wp = (rawIdx != null && _vehicleRawWps?.[rawIdx]) || _vehicleRawWps?.find(w => w.name === name);
     const aiReason = wp?.ai_reasoning;
     const msgs = aiReason ? [name, aiReason] : _getCheckpointMsg(name);
     console.log('[checkpoint]', name, aiReason ? '(backend AI)' : '(client fallback)');
@@ -908,32 +911,78 @@ function renderResult(result) {
     });
 
     const factors   = result.factors || result.factors_json || [];
-    const reasoning = result.llm_reasoning || result.reasoning || result.explanation || 'No reasoning available.';
     const intake    = result.intake || {};
     const score     = result.risk_score ?? 0;
     const level     = result.risk_level || _scoreToLevel(score);
     const etaDays   = result.eta_days || intake.eta_days || '--';
+    const etaHours  = result.eta_hours || intake.eta_hours;
     const cargo     = result.cargo_type || intake.cargo_type || '--';
+
+    // Transport mode — prefer authoritative backend value
+    const transportMode = result.transport_mode || intake.transport_mode || (_routeIsLand ? 'road' : 'sea');
+    const routeMode = {road: 'Road', air: 'Air', sea: 'Maritime'}[transportMode] || 'Road';
 
     // Extract origin + dest from ALL possible sources
     const origin = intake.origin_port || result.origin_port || _pendingOrigin || '--';
     const dest   = intake.port || intake.destination || result.destination || result.port || _pendingDest || '--';
 
-    console.log('[render] origin:', origin, '| dest:', dest, '| score:', score);
-    console.log('[render] intake keys:', Object.keys(intake));
+    console.log('[render] origin:', origin, '| dest:', dest, '| score:', score, '| mode:', transportMode);
 
-    // Dynamic mode from last route render
-    const routeMode = _routeIsLand ? 'Road' : (_vehicleRawWps?.[0]?.via?.toLowerCase().includes('air') ? 'Air' : 'Maritime');
+    // ── Core score display ──────────────────────────────────────────
     setText('gauge-score', score);
     _setRiskBadge('risk-level-badge', level);
-    setText('risk-eta',   etaDays !== '--' ? `${etaDays} days` : '--');
+
+    // Show hours for road routes, days for maritime/air
+    if (etaHours && transportMode === 'road') {
+        setText('risk-eta', `~${etaHours}h`);
+    } else {
+        setText('risk-eta', etaDays !== '--' ? `${etaDays} days` : '--');
+    }
     setText('risk-cargo', cargo);
     setText('risk-mode',  routeMode);
 
-    renderFactors(factors);
-    const rt = el('reasoning-text');
-    if (rt) rt.innerHTML = `<p>${escHtml(reasoning)}</p>`;
+    // ── Risk Explanation + Probability ───────────────────────────────
+    const probability = result.risk_probability;
+    const explanation = result.risk_explanation;
+    if (explanation || probability != null) {
+        const explRow = el('risk-explanation-row');
+        if (explRow) explRow.style.display = 'block';
+        if (explanation) setText('risk-explanation', explanation);
+        if (probability != null) {
+            const pct = Math.round(probability * 100);
+            const probEl = el('risk-probability');
+            if (probEl) {
+                probEl.textContent = `${pct}%`;
+                probEl.style.color = pct >= 70 ? '#ef4444' : pct >= 40 ? '#f59e0b' : '#22c55e';
+            }
+        }
+        // Color the explanation border by risk level
+        const explBorder = el('risk-explanation-row');
+        if (explBorder) {
+            const borderColor = score >= 75 ? '#ef4444' : score >= 55 ? '#f97316' : score >= 30 ? '#f59e0b' : '#22c55e';
+            explBorder.style.borderLeftColor = borderColor;
+        }
+    }
 
+    // ── Risk factors ────────────────────────────────────────────────
+    renderFactors(factors);
+
+    // ── Decision Synthesis + Trade-offs ──────────────────────────────
+    const synthesis = result.decision_synthesis || result.llm_reasoning || result.reasoning || 'No reasoning available.';
+    const dsEl = el('decision-synthesis-text');
+    if (dsEl) dsEl.innerHTML = `<p>${escHtml(synthesis)}</p>`;
+
+    const tradeOffs = result.trade_offs;
+    if (tradeOffs) {
+        const toRow = el('trade-offs-row');
+        const toText = el('trade-offs-text');
+        if (toRow && toText) {
+            toRow.style.display = 'block';
+            toText.textContent = tradeOffs;
+        }
+    }
+
+    // ── Confidence ──────────────────────────────────────────────────
     if (result.confidence_score != null) {
         setText('confidence-val', `${Math.round(result.confidence_score * 100)}%`);
         showEl('confidence-row');
@@ -959,7 +1008,7 @@ function renderResult(result) {
         }
     }
 
-    fetchRouteAnalysis(origin, dest, score, cargo, etaDays);
+    fetchRouteAnalysis(origin, dest, score, cargo, etaDays, transportMode);
     _showMapDecision(`⚡ ${level} Risk (${score}/100)\n${origin} → ${dest}`);
 }
 
@@ -991,7 +1040,7 @@ function renderAgentsSummary(result) {
 function _setRiskBadge(id, level) {
     const b = el(id); if (!b) return;
     b.textContent = level || '--';
-    const map = { LOW:'level-low', MEDIUM:'level-medium', HIGH:'level-high', CRITICAL:'level-critical' };
+    const map = { LOW:'level-low', MODERATE:'level-medium', MEDIUM:'level-medium', HIGH:'level-high', CRITICAL:'level-critical' };
     b.className = `risk-pill ${map[(level||'').toUpperCase()]||''}`;
 }
 
@@ -1010,21 +1059,22 @@ function renderFactors(factors) {
 
 function _scoreToLevel(s) {
     if (s>=75) return 'CRITICAL'; if (s>=55) return 'HIGH';
-    if (s>=30) return 'MEDIUM';  return 'LOW';
+    if (s>=30) return 'MODERATE';  return 'LOW';
 }
 
 /* ══════════════════════════════════════════════════════════
    10. ROUTE INTELLIGENCE STRIP
 ═══════════════════════════════════════════════════════════ */
-async function fetchRouteAnalysis(origin, dest, riskScore, cargoType, etaDays) {
+async function fetchRouteAnalysis(origin, dest, riskScore, cargoType, etaDays, transportMode) {
     if (!origin||origin==='--'||!dest||dest==='--') return;
     try {
         const p = new URLSearchParams({
             origin, dest,
-            port_city:  dest,           // real OWM forecast for destination
-            risk_score: riskScore||30,
-            cargo_type: cargoType||'general',
-            eta_days:   etaDays||14,
+            port_city:      dest,
+            risk_score:     riskScore||30,
+            cargo_type:     cargoType||'general',
+            eta_days:       etaDays||14,
+            transport_mode: transportMode||'auto',
         });
         const r = await fetch(`/api/route-analysis?${p}`);
         if (!r.ok) return;
@@ -1102,7 +1152,65 @@ async function fetchRouteAnalysis(origin, dest, riskScore, cargoType, etaDays) {
         } else if (fcRow) {
             fcRow.style.display = 'none';
         }
+
+        // ── Render Alt-Route Comparison Panel ────────────────────
+        _renderAltRouteComparison(alternative_route, transportMode);
     } catch(e) { console.warn('[route-analysis]',e); }
+}
+
+function _renderAltRouteComparison(altRoute, transportMode) {
+    const panel = el('alt-route-comparison');
+    const content = el('alt-route-comparison-content');
+    if (!panel || !content) return;
+
+    if (!altRoute) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    panel.classList.remove('hidden');
+    const comp = altRoute.comparison || {};
+    const pri = comp.primary || {};
+    const alt = comp.alternate || {};
+    const delta = comp.delta || {};
+
+    // Build comparison table
+    const isRoad = transportMode === 'road';
+    const timeLabel = isRoad ? 'Time' : 'Transit';
+    const timeUnit = isRoad ? 'h' : ' days';
+    const priTime = isRoad ? (pri.hours || '--') : (pri.days || '--');
+    const altTime = isRoad ? (alt.hours || '--') : (alt.days || '--');
+    const deltaTime = isRoad ? (delta.hours || 0) : (delta.days || 0);
+    const deltaKm = delta.km || 0;
+
+    const riskColor = (altRoute.risk_level || '').toUpperCase() === 'LOW' ? '#22c55e' :
+                      (altRoute.risk_level || '').toUpperCase() === 'HIGH' ? '#ef4444' : '#f59e0b';
+
+    content.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;">
+            <div style="text-align:center;padding:6px;background:rgba(34,197,94,0.08);border-radius:6px;">
+                <div style="font-size:8px;color:#94a3b8;text-transform:uppercase;">Primary</div>
+                <div style="font-size:13px;font-weight:600;color:#22c55e;">${pri.km || '--'} km</div>
+                <div style="font-size:10px;color:#cbd5e1;">${priTime}${timeUnit}</div>
+            </div>
+            <div style="text-align:center;padding:6px;background:rgba(249,115,22,0.08);border-radius:6px;">
+                <div style="font-size:8px;color:#94a3b8;text-transform:uppercase;">Alternate</div>
+                <div style="font-size:13px;font-weight:600;color:#f97316;">${alt.km || altRoute.total_km || '--'} km</div>
+                <div style="font-size:10px;color:#cbd5e1;">${altTime}${timeUnit}</div>
+            </div>
+            <div style="text-align:center;padding:6px;background:rgba(99,102,241,0.08);border-radius:6px;">
+                <div style="font-size:8px;color:#94a3b8;text-transform:uppercase;">Delta</div>
+                <div style="font-size:13px;font-weight:600;color:#818cf8;">${deltaKm > 0 ? '+' : ''}${deltaKm} km</div>
+                <div style="font-size:10px;color:#cbd5e1;">${deltaTime > 0 ? '+' : ''}${deltaTime}${timeUnit}</div>
+            </div>
+        </div>
+        <div style="font-size:10px;color:#e2e8f0;line-height:1.4;">
+            <strong style="color:${riskColor};">🛤 ${escHtml(altRoute.via || altRoute.label || 'Alternate')}</strong>
+            ${altRoute.risk_level ? `<span style="color:${riskColor};font-size:9px;margin-left:4px;">${altRoute.risk_level}</span>` : ''}
+        </div>
+        ${altRoute.description ? `<div style="font-size:10px;color:#94a3b8;margin-top:4px;">${escHtml(altRoute.description)}</div>` : ''}
+        ${altRoute.when_to_choose ? `<div style="font-size:9px;color:#818cf8;margin-top:4px;font-style:italic;">💡 ${escHtml(altRoute.when_to_choose)}</div>` : ''}
+    `;
 }
 
 /* ══════════════════════════════════════════════════════════
