@@ -10,7 +10,7 @@ if __name__ == "__main__":
     print("""
 ======================================================================
     ShipRiskAI — Predictive Delay & Risk Intelligence (AGENTIC)       
-    7-Agent Graph  |  LLM Router  |  Cross-Validation  |  Memory      
+    8-Agent Graph  |  LLM Router  |  Cross-Validation  |  Memory      
 ======================================================================
     Dashboard:  http://127.0.0.1:5000                                 
     Health:     http://127.0.0.1:5000/health                          

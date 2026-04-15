@@ -455,19 +455,63 @@ class MitigationStrategist:
                 "category": "financial",
             })
 
-        # ── Always: tracking recommendation ───────────────────
-        strategies.append({
-            "title": "Enable real-time vessel tracking alerts",
-            "detail": (
-                "Activate AIS tracking notifications. Set milestone alerts: "
-                "48hr, 24hr, 6hr before ETA. Share tracking link with all stakeholders."
-            ),
-            "priority": "LOW",
-            "category": "monitoring",
-        })
+        # ── Always: tracking recommendation (mode-aware) ─────
+        query_lower = intake.get("query_text", "").lower() if isinstance(intake.get("query_text"), str) else ""
+        origin = intake.get("origin_port", "")
+        dest_port = intake.get("port", "")
+        # Simple mode detection for mitigation text
+        is_road = any(kw in query_lower for kw in ["road", "truck", "highway"]) or self._is_likely_domestic(origin, dest_port)
+        is_air = any(kw in query_lower for kw in ["air", "flight", "aircraft"])
+
+        if is_road:
+            strategies.append({
+                "title": "Enable real-time fleet GPS tracking",
+                "detail": (
+                    "Activate GPS tracking on the assigned truck. Set milestone alerts: "
+                    "departure, midpoint checkpoints, and 2hr/1hr before ETA. "
+                    "Share live tracking link with all stakeholders."
+                ),
+                "priority": "LOW",
+                "category": "monitoring",
+            })
+        elif is_air:
+            strategies.append({
+                "title": "Enable real-time flight tracking alerts",
+                "detail": (
+                    "Activate FlightAware/FlightRadar tracking notifications. "
+                    "Set alerts for departure, transit hub arrival, and final approach. "
+                    "Monitor for weather-related diversions."
+                ),
+                "priority": "LOW",
+                "category": "monitoring",
+            })
+        else:
+            strategies.append({
+                "title": "Enable real-time vessel tracking alerts",
+                "detail": (
+                    "Activate AIS tracking notifications. Set milestone alerts: "
+                    "48hr, 24hr, 6hr before ETA. Share tracking link with all stakeholders."
+                ),
+                "priority": "LOW",
+                "category": "monitoring",
+            })
 
         # Sort by priority
         priority_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
         strategies.sort(key=lambda s: priority_order.get(s.get("priority", "LOW"), 3))
 
         return strategies[:6]
+
+    @staticmethod
+    def _is_likely_domestic(origin: str, dest: str) -> bool:
+        """Quick check if both cities are in the same country (India focus)."""
+        if not origin or not dest:
+            return False
+        india_cities = {
+            "delhi", "mumbai", "bangalore", "bengaluru", "chennai", "kolkata",
+            "hyderabad", "pune", "ahmedabad", "jaipur", "lucknow", "kochi",
+            "madurai", "coimbatore", "surat", "nagpur", "visakhapatnam",
+            "vijayawada", "mysore", "mysuru", "indore", "bhopal",
+        }
+        o, d = origin.lower().strip(), dest.lower().strip()
+        return any(c in o for c in india_cities) and any(c in d for c in india_cities)
