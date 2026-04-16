@@ -47,9 +47,11 @@ class NewsAgent:
     """
 
     def __init__(self, db_execute, config: dict):
-        self.execute = db_execute
-        self.api_key = config.get("TAVILY_API_KEY", "")   # from .env → TAVILY_API_KEY
-        self.ttl     = int(config.get("NEWS_CACHE_TTL", 21600))  # 6 hours
+        self.execute      = db_execute
+        self.tavily_key   = config.get("TAVILY_API_KEY", "")   # primary news source
+        self.newsapi_key  = config.get("NEWS_API_KEY", "")      # secondary news source
+        self.api_key      = self.tavily_key                      # legacy compat alias
+        self.ttl          = int(config.get("NEWS_CACHE_TTL", 21600))  # 6 hours
 
     def run(self, port: str, port_city: str, session_id: str) -> dict:
         """
@@ -82,10 +84,30 @@ class NewsAgent:
             logs.append(self._log("✅ Cache hit — using stored news articles", "success"))
             articles = cached
             result["source"] = "cache"
-        elif not self.api_key or self.api_key.startswith("your_"):
-            logs.append(self._log("No Tavily API key — generating contextual risk signals", "skipped"))
-            articles = self._contextual_fallback(search_term)
-            result["source"] = "fallback"
+        elif not self.tavily_key or self.tavily_key.startswith("your_"):
+            # Try NewsAPI.org if Tavily key is missing
+            if self.newsapi_key and not self.newsapi_key.startswith("your_"):
+                logs.append(self._log(
+                    f"No Tavily key — querying NewsAPI.org for '{search_term}'", "started"
+                ))
+                t0 = time.time()
+                try:
+                    articles = self._fetch_newsapi(search_term)
+                    duration = int((time.time() - t0) * 1000)
+                    logs.append(self._log(
+                        f"NewsAPI.org returned {len(articles)} articles in {duration}ms", "success"
+                    ))
+                    self._save_cache(cache_key, port_city or search_term, articles)
+                    result["source"] = "newsapi"
+                except Exception as e:
+                    logger.warning(f"[news] NewsAPI.org error: {e}")
+                    logs.append(self._log(f"NewsAPI.org error: {e} — using fallback", "failed"))
+                    articles = self._contextual_fallback(search_term)
+                    result["source"] = "fallback"
+            else:
+                logs.append(self._log("No news API keys — generating contextual risk signals", "skipped"))
+                articles = self._contextual_fallback(search_term)
+                result["source"] = "fallback"
         else:
             # ── Fetch from NewsAPI ─────────────────────────────────
             logs.append(self._log(
@@ -130,13 +152,13 @@ class NewsAgent:
         result["logs"] = logs
         return result
 
-    # ─── API fetch ─────────────────────────────────────────────
+    # ─── Tavily API fetch ──────────────────────────────────────────
     def _fetch_news(self, search_term: str) -> list:
         query = f"{search_term} port shipping disruptions risk"
         resp = requests.post(
             "https://api.tavily.com/search",
             json={
-                "api_key": self.api_key,
+                "api_key": self.tavily_key,
                 "query": query,
                 "search_depth": "basic",
                 "include_answer": False,
@@ -150,16 +172,46 @@ class NewsAgent:
         resp.raise_for_status()
         data = resp.json()
         items = data.get("results", [])
-
         return [
             {
                 "title":       a.get("title", ""),
                 "description": a.get("content", ""),
                 "source":      "Tavily Search",
                 "url":         a.get("url", ""),
-                "published":   datetime.utcnow().isoformat(), # Tavily basic search may not provide published date initially
+                "published":   datetime.utcnow().isoformat(),
             }
             for a in items
+        ]
+
+    # ─── NewsAPI.org fetch ─────────────────────────────────────────
+    def _fetch_newsapi(self, search_term: str) -> list:
+        """Fetch from NewsAPI.org using NEWS_API_KEY."""
+        query = f"{search_term} port shipping disruption strike"
+        resp = requests.get(
+            NEWS_API_BASE,
+            params={
+                "q": query,
+                "apiKey": self.newsapi_key,
+                "language": "en",
+                "sortBy": "publishedAt",
+                "pageSize": 10,
+                "from": (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d"),
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        articles = data.get("articles", [])
+        return [
+            {
+                "title":       a.get("title", ""),
+                "description": a.get("description") or a.get("content", ""),
+                "source":      a.get("source", {}).get("name", "NewsAPI"),
+                "url":         a.get("url", ""),
+                "published":   a.get("publishedAt", datetime.utcnow().isoformat()),
+            }
+            for a in articles
+            if a.get("title") and "[Removed]" not in a.get("title", "")
         ]
 
     # ─── Cache ────────────────────────────────────────────────────
