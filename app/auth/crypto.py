@@ -115,11 +115,18 @@ def verify_access_token(token: str) -> dict | None:
     Returns payload dict or None on failure.
     """
     try:
-        payload = jwt.decode(token, _jwt_secret(), algorithms=["HS256"])
+        # Disable strict subject validation to accept both int and string sub
+        payload = jwt.decode(
+            token, _jwt_secret(), algorithms=["HS256"],
+            options={"verify_sub": False}
+        )
         if payload.get("type") != "access":
             return None
-        # Convert sub back to int for downstream use
-        payload["sub"] = int(payload["sub"])
+        # Ensure sub is always an int for downstream use
+        try:
+            payload["sub"] = int(payload["sub"])
+        except (ValueError, TypeError):
+            return None
         return payload
     except jwt.ExpiredSignatureError:
         logger.debug("Access token expired")
@@ -127,3 +134,4 @@ def verify_access_token(token: str) -> dict | None:
     except jwt.InvalidTokenError as e:
         logger.debug(f"Invalid access token: {e}")
         return None
+
