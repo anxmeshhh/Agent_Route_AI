@@ -1,179 +1,266 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AgentRoute AI — Login to your organisation workspace">
-    <title>Login — AgentRoute AI</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=504">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=504">
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Login | AgentRouteAI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#1d1f2b",
+                    "on-primary-fixed": "#000000",
+                    "on-secondary": "#004755",
+                    "surface-bright": "#2a2b3a",
+                    "primary-container": "#b28cff",
+                    "on-surface": "#f1effd",
+                    "surface-variant": "#242532",
+                    "on-primary": "#3c0089",
+                    "surface-container-highest": "#242532",
+                    "background": "#0d0e17",
+                    "error": "#ff6e84",
+                    "surface-container": "#181924",
+                    "surface": "#0d0e17",
+                    "secondary-dim": "#00caed",
+                    "secondary": "#00d9ff",
+                    "outline-variant": "#474752",
+                    "primary-dim": "#8a4cfc",
+                    "surface-container-low": "#12131d",
+                    "on-background": "#f1effd",
+                    "primary": "#bd9dff",
+                    "on-error": "#490013",
+                    "secondary-container": "#00687b",
+                    "outline": "#757480",
+                    "on-surface-variant": "#abaab7"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .glass-panel { background: rgba(24, 25, 36, 0.7); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+    .mesh-gradient {
+        background-color: #0d0e17;
+        background-image:
+            radial-gradient(at 0% 0%, rgba(189, 157, 255, 0.15) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, rgba(0, 217, 255, 0.15) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(189, 157, 255, 0.1) 0px, transparent 50%),
+            radial-gradient(at 0% 100%, rgba(0, 217, 255, 0.1) 0px, transparent 50%);
+    }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+    .shake { animation: shake 0.3s ease-in-out; }
+    .auth-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+</style>
 </head>
-<body class="auth-body">
+<body class="bg-background text-on-surface font-body min-h-screen flex flex-col selection:bg-primary/30">
+<!-- Theme Toggle -->
+<div class="fixed top-6 right-6 z-50">
+    <button class="p-2 rounded-full glass-panel border border-white/5 hover:bg-white/10 transition-all active:scale-95 flex items-center justify-center text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined">dark_mode</span>
+    </button>
+</div>
 
-    <div class="auth-bg">
-        <div class="bg-orb bg-orb-1"></div>
-        <div class="bg-orb bg-orb-2"></div>
-        <div class="bg-orb bg-orb-3"></div>
-        <div class="bg-grid"></div>
+<main class="flex-grow flex items-center justify-center p-4 mesh-gradient relative overflow-hidden">
+    <!-- Background Orbs -->
+    <div class="absolute inset-0 pointer-events-none opacity-20">
+        <div class="absolute top-[20%] left-[15%] w-96 h-96 bg-primary-dim rounded-full blur-[120px]"></div>
+        <div class="absolute bottom-[20%] right-[15%] w-96 h-96 bg-secondary-container rounded-full blur-[120px]"></div>
     </div>
 
-    <div class="auth-center">
-
-        <div class="auth-brand">
-            <div class="brand-logo-wrap">
-                <span class="brand-logo-icon">🗺</span>
-            </div>
-            <h1 class="auth-brand-title">AgentRoute<span class="text-purple">AI</span></h1>
-            <p class="auth-brand-sub">Organisation-based Shipment Intelligence</p>
-        </div>
-
-        <div class="auth-card" id="auth-card">
-            <div class="auth-card-header">
-                <h2 class="auth-card-title">Welcome back</h2>
-                <p class="auth-card-sub">Sign in to your organisation workspace</p>
+    <!-- Login Card -->
+    <div class="w-full max-w-[440px] z-10" id="auth-card">
+        <div class="glass-panel p-8 md:p-10 rounded-xl border border-white/10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)]">
+            <!-- Brand -->
+            <div class="flex flex-col items-center mb-8">
+                <div class="w-12 h-12 mb-4 bg-gradient-to-br from-secondary to-primary rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(0,217,255,0.3)]">
+                    <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">alt_route</span>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">AgentRouteAI</h1>
+                <p class="text-on-surface-variant text-sm mt-1">Intelligence in Motion</p>
             </div>
 
-            <!-- Google OAuth Button -->
-            <a href="/api/auth/google/login" class="google-btn" id="google-login-btn">
-                <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-                    <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-                </svg>
-                Continue with Google
-            </a>
-
-            <div class="auth-divider"><span>or sign in with email</span></div>
-
-            <form id="login-form" class="auth-form" novalidate>
-                <div class="form-group">
-                    <label class="form-label" for="login-email">Work Email</label>
-                    <div class="input-wrap">
-                        <span class="input-icon">✉</span>
-                        <input type="email" id="login-email" name="email" class="form-input"
-                               placeholder="you@company.com" autocomplete="email" required>
-                    </div>
-                    <span class="field-error" id="err-email"></span>
+            <div class="space-y-6">
+                <div class="space-y-2">
+                    <h2 class="text-xl font-semibold text-on-surface">Welcome back</h2>
+                    <p class="text-on-surface-variant text-sm">Access your intelligence fleet dashboard.</p>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="login-password">Password</label>
-                    <div class="input-wrap">
-                        <span class="input-icon">🔒</span>
-                        <input type="password" id="login-password" name="password" class="form-input"
-                               placeholder="••••••••" autocomplete="current-password" required>
-                        <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Show password">👁</button>
-                    </div>
-                    <span class="field-error" id="err-password"></span>
-                </div>
-
-                <div class="auth-error-banner hidden" id="auth-error-banner">
+                <!-- Error Banner -->
+                <div class="hidden bg-error/10 border border-error/20 text-error text-sm px-4 py-3 rounded-lg" id="auth-error-banner">
                     <span id="auth-error-text">Invalid email or password</span>
                 </div>
 
-                <button type="submit" class="auth-submit-btn" id="login-btn">
-                    <span id="login-btn-text">Sign In</span>
-                    <span id="login-spinner" class="auth-spinner hidden"></span>
-                </button>
-            </form>
+                <!-- Form -->
+                <form class="space-y-4" id="login-form" novalidate>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider ml-1">Email Address</label>
+                        <div class="relative group">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-secondary transition-colors">mail_outline</span>
+                            <input id="login-email" class="w-full bg-surface-container-highest border-none focus:ring-0 rounded-lg py-3.5 pl-12 pr-4 text-on-surface placeholder:text-outline transition-all focus:bg-surface-bright shadow-inner" placeholder="name@company.com" type="email" autocomplete="email" required/>
+                            <div class="absolute bottom-0 left-0 h-[2px] w-0 bg-secondary transition-all duration-300 group-focus-within:w-full"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between items-center px-1">
+                            <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Password</label>
+                        </div>
+                        <div class="relative group">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-secondary transition-colors">lock</span>
+                            <input id="login-password" class="w-full bg-surface-container-highest border-none focus:ring-0 rounded-lg py-3.5 pl-12 pr-12 text-on-surface placeholder:text-outline transition-all focus:bg-surface-bright shadow-inner" placeholder="••••••••" type="password" autocomplete="current-password" required/>
+                            <button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors" type="button" id="toggle-pw">
+                                <span class="material-symbols-outlined text-xl">visibility</span>
+                            </button>
+                            <div class="absolute bottom-0 left-0 h-[2px] w-0 bg-secondary transition-all duration-300 group-focus-within:w-full"></div>
+                        </div>
+                    </div>
+                    <button class="w-full py-4 rounded-lg bg-gradient-to-r from-secondary to-primary text-on-primary-fixed font-bold tracking-wide transition-all hover:brightness-110 active:scale-[0.98] shadow-[0_8px_24px_rgba(0,217,255,0.2)] mt-2 flex items-center justify-center gap-2" type="submit" id="login-btn">
+                        <span id="login-btn-text">Sign In</span>
+                        <span id="login-spinner" class="auth-spinner hidden"></span>
+                    </button>
+                </form>
 
-            <div class="auth-divider"><span>New to the platform?</span></div>
-            <a href="/signup" class="auth-alt-btn" id="goto-signup">Create Organisation & Account</a>
+                <!-- Divider -->
+                <div class="relative flex items-center py-2">
+                    <div class="flex-grow border-t border-white/5"></div>
+                    <span class="flex-shrink mx-4 text-xs font-semibold text-outline uppercase tracking-widest">Or continue with</span>
+                    <div class="flex-grow border-t border-white/5"></div>
+                </div>
+
+                <!-- Google OAuth -->
+                <a href="/api/auth/google/login" class="w-full py-3.5 rounded-lg bg-surface-container-high border border-white/5 text-on-surface font-semibold flex items-center justify-center gap-3 hover:bg-surface-bright transition-all active:scale-[0.98] no-underline">
+                    <svg class="w-5 h-5" viewbox="0 0 24 24">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+                    </svg>
+                    Google
+                </a>
+
+                <p class="text-center text-sm text-on-surface-variant">
+                    New to the platform? <a class="text-primary font-semibold hover:underline" href="/signup">Create Organisation</a>
+                </p>
+            </div>
         </div>
 
-        <!-- RBAC Badge Row -->
-        <div class="auth-badges">
-            <span class="auth-badge green">🔒 AES-256 PII Encryption</span>
-            <span class="auth-badge yellow">🛡 JWT + MFA OTP</span>
-            <span class="auth-badge purple">👥 RBAC Admin/Member</span>
+        <!-- Footer -->
+        <div class="mt-8 flex justify-between items-center px-4">
+            <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse shadow-[0_0_8px_rgba(0,217,255,1)]"></span>
+                <span class="font-['JetBrains_Mono'] text-[10px] text-outline uppercase tracking-widest">AES-256 • JWT • RBAC • MFA</span>
+            </div>
         </div>
-
-        <p class="auth-footer">
-            AgentRoute AI — Multi-tenant Shipment Intelligence&nbsp;&nbsp;|&nbsp;&nbsp;
-            <span style="color:#22c55e">🟢 Mandatory</span>&nbsp;
-            <span style="color:#facc15">🟡 Advantage</span>
-        </p>
     </div>
 
-    <script>
-    (function() {
-        // Show OAuth error from URL params (e.g. ?error=oauth_state_mismatch)
-        const params = new URLSearchParams(window.location.search);
-        const oauthErr = params.get('error');
-        if (oauthErr) {
-            const msgs = {
-                'oauth_state_mismatch': 'Security check failed. Please try again.',
-                'google_token_failed': 'Google sign-in failed. Try again.',
-                'google_userinfo_failed': 'Could not fetch your Google profile.',
-                'google_email_unverified': 'Your Google email is not verified.',
-                'account_inactive': 'Your account is inactive. Contact your admin.',
-            };
-            const banner = document.getElementById('auth-error-banner');
-            document.getElementById('auth-error-text').textContent = msgs[oauthErr] || 'Sign-in error: ' + oauthErr;
-            banner.classList.remove('hidden');
-        }
+    <!-- Decorative -->
+    <div class="hidden xl:block absolute left-20 bottom-20 max-w-xs space-y-4">
+        <div class="glass-panel p-4 rounded-lg border border-white/5 shadow-xl">
+            <div class="flex justify-between items-start mb-3">
+                <div class="p-2 bg-secondary-container/20 rounded text-secondary">
+                    <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">psychology</span>
+                </div>
+                <span class="text-[10px] font-['JetBrains_Mono'] text-secondary uppercase bg-secondary/10 px-2 py-0.5 rounded">Real-time Opt</span>
+            </div>
+            <p class="text-xs text-on-surface-variant leading-relaxed">Neural paths connecting 4,209 nodes in the kinetic fleet network. Latency stabilized at 12ms.</p>
+            <div class="mt-3 h-1 bg-surface-container rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-secondary to-primary w-2/3"></div>
+            </div>
+        </div>
+    </div>
+</main>
 
-        // If already logged in → dashboard
-        fetch('/api/auth/me', { credentials: 'include' })
-            .then(r => { if (r.ok) window.location.href = '/'; });
+<footer class="p-6 text-center">
+    <p class="text-[10px] text-outline uppercase tracking-[0.2em] opacity-60">
+        Encrypted End-to-End • Kinetic Intelligence Core • © 2026 AgentRouteAI
+    </p>
+</footer>
 
-        // Password toggle
-        document.getElementById('toggle-pw').addEventListener('click', function() {
-            const pw = document.getElementById('login-password');
-            pw.type = pw.type === 'password' ? 'text' : 'password';
-        });
+<script>
+(function() {
+    // Show OAuth error from URL params
+    const params = new URLSearchParams(window.location.search);
+    const oauthErr = params.get('error');
+    if (oauthErr) {
+        const msgs = {
+            'oauth_state_mismatch': 'Security check failed. Please try again.',
+            'google_token_failed': 'Google sign-in failed. Try again.',
+            'google_userinfo_failed': 'Could not fetch your Google profile.',
+            'google_email_unverified': 'Your Google email is not verified.',
+            'account_inactive': 'Your account is inactive. Contact your admin.',
+        };
+        const banner = document.getElementById('auth-error-banner');
+        document.getElementById('auth-error-text').textContent = msgs[oauthErr] || 'Sign-in error: ' + oauthErr;
+        banner.classList.remove('hidden');
+    }
 
-        document.getElementById('login-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const banner  = document.getElementById('auth-error-banner');
-            const errTxt  = document.getElementById('auth-error-text');
-            const btn     = document.getElementById('login-btn');
-            const btnTxt  = document.getElementById('login-btn-text');
-            const spin    = document.getElementById('login-spinner');
-            banner.classList.add('hidden');
-            btnTxt.textContent = 'Signing in…';
-            spin.classList.remove('hidden');
-            btn.disabled = true;
+    // Already logged in → dashboard
+    fetch('/api/auth/me', { credentials: 'include' })
+        .then(r => { if (r.ok) window.location.href = '/'; });
 
-            const email    = document.getElementById('login-email').value.trim().toLowerCase();
-            const password = document.getElementById('login-password').value;
+    // Password toggle
+    document.getElementById('toggle-pw').addEventListener('click', function() {
+        const pw = document.getElementById('login-password');
+        pw.type = pw.type === 'password' ? 'text' : 'password';
+    });
 
-            try {
-                const res = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ email, password })
-                });
-                const data = await res.json();
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const banner = document.getElementById('auth-error-banner');
+        const errTxt = document.getElementById('auth-error-text');
+        const btn = document.getElementById('login-btn');
+        const btnTxt = document.getElementById('login-btn-text');
+        const spin = document.getElementById('login-spinner');
+        banner.classList.add('hidden');
+        btnTxt.textContent = 'Signing in…';
+        spin.classList.remove('hidden');
+        btn.disabled = true;
 
-                if (res.ok) {
-                    if (data.otp_required) {
-                        sessionStorage.setItem('otp_user_id', data.user_id);
-                        window.location.href = '/otp';
-                    } else {
-                        window.location.href = '/';
-                    }
+        const email = document.getElementById('login-email').value.trim().toLowerCase();
+        const password = document.getElementById('login-password').value;
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                if (data.otp_required) {
+                    sessionStorage.setItem('otp_user_id', data.user_id);
+                    window.location.href = '/otp';
                 } else {
-                    errTxt.textContent = data.error || 'Login failed.';
-                    banner.classList.remove('hidden');
-                    const card = document.getElementById('auth-card');
-                    card.classList.add('shake');
-                    setTimeout(() => card.classList.remove('shake'), 500);
+                    window.location.href = '/';
                 }
-            } catch(err) {
-                errTxt.textContent = 'Network error — please try again.';
+            } else {
+                errTxt.textContent = data.error || 'Login failed.';
                 banner.classList.remove('hidden');
-            } finally {
-                btnTxt.textContent = 'Sign In';
-                spin.classList.add('hidden');
-                btn.disabled = false;
+                const card = document.getElementById('auth-card');
+                card.classList.add('shake');
+                setTimeout(() => card.classList.remove('shake'), 500);
             }
-        });
-    })();
-    </script>
-</body>
-</html>
+        } catch(err) {
+            errTxt.textContent = 'Network error — please try again.';
+            banner.classList.remove('hidden');
+        } finally {
+            btnTxt.textContent = 'Sign In';
+            spin.classList.add('hidden');
+            btn.disabled = false;
+        }
+    });
+})();
+</script>
+</body></html>

@@ -9,7 +9,7 @@ main_bp = Blueprint("main", __name__)
 
 @main_bp.route("/")
 def index():
-    return render_template("index.html", google_maps_key=Config.GOOGLE_MAPS_API_KEY)
+    return render_template("index.html")
 
 
 @main_bp.route("/login")
@@ -27,6 +27,18 @@ def otp_page():
     return render_template("otp.html")
 
 
+@main_bp.route("/logs")
+def logs_page():
+    return render_template("logs.html")
+
+
+@main_bp.route("/analysis")
+def analysis_page():
+    return render_template("analysis.html", google_maps_key=Config.GOOGLE_MAPS_API_KEY)
+
+
+
 @main_bp.route("/health")
 def health():
     return {"status": "ok", "service": "Predictive Delay & Risk Intelligence Agent"}
+

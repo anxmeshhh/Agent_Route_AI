@@ -794,6 +794,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadHistory();
+
+    // Quick-query pickup from dashboard
+    const quickQ = sessionStorage.getItem('quick_query');
+    if (quickQ) {
+        sessionStorage.removeItem('quick_query');
+        const qi = el('query-input');
+        if (qi) { qi.value = quickQ; autoDetectType(quickQ); qi.focus(); }
+    }
 });
 
 function autoDetectType(text) {
