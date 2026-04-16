@@ -1,63 +1,85 @@
-# ======================================================================
-#  AgentRouteAI — Docker Compose (Single Network, All Services)
-#  All components dockerized, discoverable by service name
-# ======================================================================
+# ============================================================
+#  AgentRouteAI — Docker Compose
+#  Services: mysql | backend (Flask+Worker) | frontend (Nginx)
+# ============================================================
 
 services:
-  # ── MySQL Database ─────────────────────────────────────────
-  db:
+
+  # ── MySQL Database ────────────────────────────────────────
+  mysql:
     image: mysql:8.0
-    container_name: agentrouteai-db
+    container_name: agentroute_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-theanimesh2005}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-shipment_risk_db}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: shipment_risk_db
+      MYSQL_USER: agentroute
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-AgentRoute@2026!}
     ports:
-      - "3307:3306"      # Expose on 3307 to avoid local MySQL conflict
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-    networks:
-      - agentrouteai-net
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD:-theanimesh2005}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
+    networks:
+      - agentroute_net
 
-  # ── Flask Backend (AgentRouteAI) ───────────────────────────
-  app:
+  # ── Backend + Agentic Worker (Flask / Gunicorn) ───────────
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: agentrouteai-app
+    container_name: agentroute_backend
     restart: unless-stopped
-    ports:
-      - "5050:5000"
     env_file:
       - .env
     environment:
-      # Override MYSQL_HOST to use Docker service name
-      MYSQL_HOST: db
-      MYSQL_PORT: "3306"
-      FLASK_DEBUG: "false"
+      # Override DB host to use Docker service name
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: agentroute
+      MYSQL_DATABASE: shipment_risk_db
+      FLASK_ENV: production
+      PYTHONUNBUFFERED: "1"
     depends_on:
-      db:
+      mysql:
         condition: service_healthy
-    networks:
-      - agentrouteai-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - agentroute_net
 
+  # ── Frontend (Nginx — static files + reverse proxy) ───────
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    container_name: agentroute_frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - agentroute_net
+
+# ── Volumes ──────────────────────────────────────────────────
 volumes:
   mysql_data:
-    driver: local
+    name: agentroute_mysql_data
 
+# ── Networks ─────────────────────────────────────────────────
 networks:
-  agentrouteai-net:
-    name: agentrouteai-net
+  agentroute_net:
+    name: agentroute_network
     driver: bridge

@@ -1,14 +1,55 @@
+# Git
+.git
+.gitignore
+
+# Python cache
 __pycache__
 *.pyc
 *.pyo
-.git
-.gitignore
-.env
-.env.local
-*.md
-new_html_files/
-fix_db.py
+*.pyd
+.Python
+*.egg-info
+
+# Virtual envs
+venv/
+.venv/
+env/
+
+# Dev / debug scripts
+debug/
+
+# Tests
+tests/
+
+# IDE
 .vscode/
 .idea/
-node_modules/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
+logs/
+
+# Env files (injected at runtime via docker-compose env_file)
+.env
+.env.*
+!.env.example
+
+# Do not ignore the entire docker folder, we need nginx.conf for frontend
+# docker/
+
+# Images / media
+*.png
+*.jpg
+*.jpeg
+image*.png
+
+# Misc
+*.md
+LICENSE
+Dockerfile*
+docker-compose*.yml
