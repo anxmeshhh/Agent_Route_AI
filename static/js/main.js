@@ -1466,3 +1466,283 @@ window.setRouteType          = setRouteType;
 window.openVisibilityModal   = openVisibilityModal;
 window.closeVisibilityModal  = closeVisibilityModal;
 window.sendVisibilityRequest = sendVisibilityRequest;
+
+/* ══════════════════════════════════════════════════════════
+   THREAT MAP SIMULATION
+   Called from analysis.html after induceThreatFromPanel()
+   and genReroutesFromPanel() succeed.
+═══════════════════════════════════════════════════════════ */
+
+let _threatLayers  = [];   // separate layer group for threat overlays
+let _rerouteLayers = [];   // separate layer group for reroute overlays
+
+function _clearThreatLayers() {
+    _threatLayers.forEach(l => { try { _bgMap?.removeLayer(l); } catch(_) {} });
+    _threatLayers = [];
+}
+
+function _clearRerouteLayers() {
+    _rerouteLayers.forEach(l => { try { _bgMap?.removeLayer(l); } catch(_) {} });
+    _rerouteLayers = [];
+}
+
+/** Geocode a place name via Nominatim (free, no key needed). */
+async function _geocodePlace(place) {
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`;
+        const r = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+        const j = await r.json();
+        if (j && j[0]) return { lat: parseFloat(j[0].lat), lon: parseFloat(j[0].lon) };
+    } catch(e) { console.warn('[geocode]', place, e.message); }
+    return null;
+}
+
+/**
+ * Simulate a threat on the map:
+ * - Pulsing red danger zone at threat.location
+ * - Red blast-radius circle (affected_radius_km)
+ * - Dims the current route line to show it's blocked
+ * @param {object} threat - threat object from /api/tickets/:id/threat
+ */
+async function simulateThreatOnMap(threat) {
+    if (!threat) return;
+    whenMapReady(async () => {
+        _clearThreatLayers();
+
+        const severityColors = { LOW: '#f59e0b', MEDIUM: '#ef4444', HIGH: '#dc2626', CRITICAL: '#7f1d1d' };
+        const sev   = (threat.severity || 'HIGH').toUpperCase();
+        const color = severityColors[sev] || '#ef4444';
+        const typeIcon = { piracy:'🏴‍☠️', storm:'🌪️', port_closure:'🚫', mechanical:'⚙️',
+                           geopolitical:'🚨', fire:'🔥', collision:'💥', strike:'✊',
+                           earthquake:'🌊', flood:'🌧️' }[threat.type || threat.threat_type] || '⚠️';
+
+        // 1. Dim existing route by overlaying a translucent dark layer
+        _routeLayers.forEach(l => {
+            if (l.setStyle) {
+                try { l.setStyle({ opacity: 0.25, fillOpacity: 0.1 }); } catch(_) {}
+            }
+        });
+
+        // 2. Stop vehicle animation (route is blocked)
+        _stopVehicle();
+
+        // 3. Geocode the threat location
+        let coords = null;
+        const loc = threat.location || '';
+        if (loc) {
+            coords = await _geocodePlace(loc);
+        }
+
+        // Fallback: midpoint of current route
+        if (!coords && _currentWaypts.length >= 2) {
+            const mid = Math.floor(_currentWaypts.length / 2);
+            coords = { lat: _currentWaypts[mid][0], lon: _currentWaypts[mid][1] };
+        }
+
+        if (!coords) {
+            console.warn('[threat-sim] Could not geocode threat location:', loc);
+            return;
+        }
+
+        const latlng = [coords.lat, coords.lon];
+
+        // 4. Blast radius circle (affected_radius_km converted to meters)
+        const radiusM = (threat.affected_radius_km || 150) * 1000;
+        const circle = L.circle(latlng, {
+            radius: radiusM,
+            color: color, weight: 2, opacity: 0.6,
+            fillColor: color, fillOpacity: 0.08,
+            dashArray: '8,6',
+        }).addTo(_bgMap);
+        _threatLayers.push(circle);
+
+        // 5. Pulsing danger marker
+        const dangerIcon = L.divIcon({
+            className: '',
+            html: `<div style="
+                width:48px;height:48px;border-radius:50%;
+                background:${color}22;
+                border:2px solid ${color};
+                display:flex;align-items:center;justify-content:center;
+                font-size:22px;
+                box-shadow:0 0 20px ${color}66, 0 0 40px ${color}33;
+                animation:pulse 1.5s infinite;
+            ">${typeIcon}</div>`,
+            iconSize: [48, 48], iconAnchor: [24, 24],
+        });
+        const marker = L.marker(latlng, { icon: dangerIcon, zIndexOffset: 3000 })
+            .bindTooltip(
+                `<b style="color:${color}">⚠ ${escHtml(sev)} THREAT</b><br>
+                 <b>${escHtml(threat.title || '')}</b><br>
+                 <span style="font-size:10px">${escHtml(threat.description || '')}</span><br>
+                 <span style="font-size:9px;color:#aaa">📍 ${escHtml(loc)} · ${threat.estimated_delay_days || '?'} day delay</span>`,
+                { className: 'leaflet-tool-text', direction: 'top', maxWidth: 320, sticky: false }
+            )
+            .addTo(_bgMap);
+        _threatLayers.push(marker);
+
+        // 6. "BLOCKED" X-marker on original route midpoint
+        if (_currentWaypts.length >= 2) {
+            const midIdx = Math.floor(_currentWaypts.length / 2);
+            const blockIcon = L.divIcon({
+                className: '',
+                html: `<div style="font-size:28px;line-height:1;text-shadow:0 0 8px ${color}">🚫</div>`,
+                iconSize: [32, 32], iconAnchor: [16, 16],
+            });
+            const blockMkr = L.marker(_currentWaypts[midIdx], { icon: blockIcon, zIndexOffset: 2500 })
+                .bindTooltip('<b>Route Blocked by Threat</b>', { className: 'leaflet-tool-text', direction: 'top' })
+                .addTo(_bgMap);
+            _threatLayers.push(blockMkr);
+        }
+
+        // 7. Fly map to show threat
+        try {
+            const bounds = L.latLngBounds([latlng]);
+            if (_currentWaypts.length >= 2) {
+                _currentWaypts.forEach(p => bounds.extend(p));
+            }
+            _bgMap.flyToBounds(bounds, { padding: [60, 60], duration: 1.2 });
+        } catch(e) {
+            _bgMap.setView(latlng, 5);
+        }
+
+        // 8. Overlay card update
+        setText('map-overlay-route-text', `⚠️ THREAT: ${escHtml(threat.title || sev)}`);
+        setText('map-overlay-meta', `📍 ${escHtml(loc)} · ${escHtml(sev)} severity · ${threat.estimated_delay_days || '?'} day delay`);
+        showEl('map-overlay-card');
+
+        console.log('[threat-sim] Threat rendered at', coords, 'radius', radiusM, 'm');
+    });
+}
+
+/**
+ * Simulate reroutes on the map:
+ * - Draws 4 alternative route lines (color-coded by mode/risk)
+ * - Animates vehicle on the RECOMMENDED route
+ * - Shows route labels with cost/time/risk info
+ * @param {object} rerouteData - response from /api/tickets/:id/reroute
+ * @param {string} origin - shipment origin
+ * @param {string} destination - shipment destination
+ */
+async function simulateReroutesOnMap(rerouteData, origin, destination) {
+    if (!rerouteData || !rerouteData.routes) return;
+    whenMapReady(async () => {
+        _clearRerouteLayers();
+
+        // Stop original route animation — threat blocked it
+        _stopVehicle();
+
+        const routes = rerouteData.routes || [];
+        if (routes.length === 0) return;
+
+        const modeColors = { AIR: '#a855f7', SEA: '#06b6d4', MULTIMODAL: '#f59e0b' };
+        const recRoute = routes.find(r => r.recommended) || routes[0];
+        const allBounds = L.latLngBounds([]);
+        let recWaypoints = null;
+
+        for (const route of routes) {
+            const isRec = route.recommended;
+            const color = modeColors[route.mode] || '#06b6d4';
+            const riskColor = { LOW: '#4ade80', MEDIUM: '#fde68a', HIGH: '#f87171' }[route.risk_level] || '#aaa';
+            const opacity = isRec ? 1.0 : 0.45;
+            const weight  = isRec ? 4 : 2;
+            const waypoints = route.waypoints || [];
+
+            if (waypoints.length < 2) continue;
+
+            // Geocode each waypoint
+            const coords = [];
+            for (const wp of waypoints) {
+                const c = await _geocodePlace(wp);
+                if (c) coords.push([c.lat, c.lon]);
+            }
+
+            // Also add origin + destination
+            const og = await _geocodePlace(origin);
+            const dg = await _geocodePlace(destination);
+            let fullPath = [];
+            if (og) fullPath.push([og.lat, og.lon]);
+            fullPath = fullPath.concat(coords);
+            if (dg) fullPath.push([dg.lat, dg.lon]);
+
+            if (fullPath.length < 2) continue;
+
+            // Glow layer
+            const glow = L.polyline(fullPath, { color, weight: 16, opacity: 0.06 }).addTo(_bgMap);
+            _rerouteLayers.push(glow);
+
+            // Main line
+            const dashArr = route.mode === 'AIR' ? '4,12' : route.mode === 'MULTIMODAL' ? '8,6' : '6,8';
+            const line = L.polyline(fullPath, {
+                color, weight, opacity,
+                dashArray: isRec ? null : dashArr,
+            }).addTo(_bgMap);
+            _rerouteLayers.push(line);
+
+            // Route label at midpoint
+            const midIdx = Math.floor(fullPath.length / 2);
+            const modeEmoji = { AIR: '✈️', SEA: '🚢', MULTIMODAL: '🔄' }[route.mode] || '📦';
+            const labelHtml = `<div style="
+                background:rgba(12,12,24,0.92);
+                border:1px solid ${isRec ? color : 'rgba(255,255,255,0.1)'};
+                border-radius:6px;padding:4px 8px;
+                font-size:9px;font-weight:700;color:${color};
+                white-space:nowrap;
+                ${isRec ? `box-shadow:0 0 12px ${color}44;` : ''}
+            ">${modeEmoji} ${escHtml(route.label || route.route_id)}
+            ${isRec ? '<span style="color:#4ade80;margin-left:4px">★ BEST</span>' : ''}
+            <br><span style="color:${riskColor};font-weight:400">${route.risk_level} risk · ${route.transit_days}d · $${(route.cost_usd||0).toLocaleString()}</span></div>`;
+
+            const labelIcon = L.divIcon({
+                className: '', html: labelHtml,
+                iconSize: [200, 40], iconAnchor: [100, 20],
+            });
+            const labelMkr = L.marker(fullPath[midIdx], { icon: labelIcon, zIndexOffset: 1800 + (isRec ? 100 : 0) })
+                .addTo(_bgMap);
+            _rerouteLayers.push(labelMkr);
+
+            // Track bounds
+            fullPath.forEach(p => allBounds.extend(p));
+
+            // Save recommended route waypoints for animation
+            if (isRec) recWaypoints = fullPath;
+        }
+
+        // Fly to show all reroutes
+        try {
+            if (allBounds.isValid()) {
+                _bgMap.flyToBounds(allBounds, { padding: [60, 60], duration: 1.4 });
+            }
+        } catch(e) { console.warn('[reroute-sim] flyToBounds failed:', e.message); }
+
+        // Animate vehicle on recommended route
+        if (recWaypoints && recWaypoints.length >= 2) {
+            setTimeout(() => {
+                _routeIsLand = false; // default sea/air for reroutes
+                if (recRoute.mode === 'AIR') {
+                    _vehicleRawWps = recWaypoints.map((p, i) => ({ lat: p[0], lon: p[1], via: 'air', name: recRoute.waypoints?.[i] || '' }));
+                } else {
+                    _vehicleRawWps = recWaypoints.map((p, i) => ({ lat: p[0], lon: p[1], name: recRoute.waypoints?.[i] || '' }));
+                }
+                _currentWaypts = recWaypoints;
+                _vehiclePath   = _makeDensePath(recWaypoints, 60);
+                _totalRouteKm  = _calcKm(recWaypoints);
+                _startVehicleAnimation();
+                console.log('[reroute-sim] Animating on recommended route:', recRoute.route_id, recRoute.label);
+            }, 1800);
+        }
+
+        // Update overlay
+        const modeEmoji = { AIR: '✈️', SEA: '🚢', MULTIMODAL: '🔄' }[recRoute.mode] || '📦';
+        setText('map-overlay-route-text', `🔀 ${routes.length} Reroutes Available`);
+        setText('map-overlay-meta', `${modeEmoji} Best: ${escHtml(recRoute.label || '')} · ${recRoute.transit_days}d · $${(recRoute.cost_usd||0).toLocaleString()}`);
+        showEl('map-overlay-card');
+
+        console.log('[reroute-sim] Drew', routes.length, 'reroutes on map');
+    });
+}
+
+// Export for analysis.html
+window.simulateThreatOnMap   = simulateThreatOnMap;
+window.simulateReroutesOnMap = simulateReroutesOnMap;
+window.clearThreatMapLayers  = function() { _clearThreatLayers(); _clearRerouteLayers(); };
