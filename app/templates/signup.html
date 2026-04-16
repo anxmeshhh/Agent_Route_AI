@@ -49,7 +49,7 @@
             <!-- Step 1: Organisation -->
             <div class="step active" id="step-1">
                 <div class="mb-6 space-y-2">
-                    <h1 class="text-2xl font-bold font-headline tracking-tight text-on-surface">Initiate Deployment</h1>
+                    <h1 class="text-2xl font-bold font-headline tracking-tight text-on-surface">AgentRoute AI</h1>
                     <p class="text-sm text-on-surface-variant">Step 1 — Name your organisation</p>
                 </div>
                 <div class="space-y-4">
@@ -129,12 +129,12 @@
                 </form>
             </div>
 
-            <!-- Step 3: Success -->
+            <!-- Step 3: Success / OTP Prompt -->
             <div class="step" id="step-3">
                 <div class="text-center py-8 space-y-4">
-                    <div class="text-6xl">🚀</div>
-                    <h2 class="text-2xl font-bold text-secondary">Deployment Initiated!</h2>
-                    <p class="text-on-surface-variant">Organisation created. Redirecting to command center...</p>
+                    <div class="text-6xl" id="step3-icon">📧</div>
+                    <h2 class="text-2xl font-bold text-secondary" id="step3-title">Organisation Created!</h2>
+                    <p class="text-on-surface-variant" id="step3-msg">A 6-digit OTP has been sent to your email. Redirecting to verify...</p>
                     <div class="h-1 bg-surface-container-high rounded-full overflow-hidden mt-4">
                         <div class="h-full bg-gradient-to-r from-secondary to-primary animate-pulse w-full"></div>
                     </div>
@@ -200,7 +200,19 @@ document.getElementById('signup-form').addEventListener('submit', async function
         if (res.ok) {
             document.getElementById('step-2').classList.remove('active');
             document.getElementById('step-3').classList.add('active');
-            setTimeout(() => { window.location.href = '/'; }, 2000);
+            if (data.otp_required && data.user_id) {
+                const uid = String(data.user_id);
+                sessionStorage.setItem('otp_user_id', uid);
+                document.getElementById('step3-icon').textContent = '📧';
+                document.getElementById('step3-title').textContent = 'Check Your Email!';
+                document.getElementById('step3-msg').textContent = 'A 6-digit OTP has been sent. Redirecting to verify...';
+                setTimeout(() => { window.location.href = '/otp?uid=' + uid; }, 1800);
+            } else {
+                document.getElementById('step3-icon').textContent = '🚀';
+                document.getElementById('step3-title').textContent = 'Organisation Created!';
+                document.getElementById('step3-msg').textContent = 'Redirecting to your dashboard...';
+                setTimeout(() => { window.location.href = '/'; }, 1800);
+            }
         } else {
             const errors = data.errors || {};
             for (const [k, msg] of Object.entries(errors)) {

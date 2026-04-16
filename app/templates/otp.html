@@ -70,7 +70,15 @@
 
     <script>
     (function() {
-        const userId = sessionStorage.getItem('otp_user_id');
+        // Read user_id from sessionStorage OR URL param (?uid=X) — whichever is available
+        const urlParams = new URLSearchParams(window.location.search);
+        const uidFromUrl = urlParams.get('uid');
+        const uidFromSession = sessionStorage.getItem('otp_user_id');
+        const userId = uidFromUrl || uidFromSession;
+
+        // Sync: if we got it from URL, store it in sessionStorage too
+        if (uidFromUrl) sessionStorage.setItem('otp_user_id', uidFromUrl);
+
         if (!userId) { window.location.href = '/login'; return; }
 
         // ── OTP box focus-forward behaviour ──────────────────

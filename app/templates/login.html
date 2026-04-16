@@ -240,8 +240,10 @@
 
             if (res.ok) {
                 if (data.otp_required) {
-                    sessionStorage.setItem('otp_user_id', data.user_id);
-                    window.location.href = '/otp';
+                    // OTP_ENABLED=true: Store user_id, go to OTP verification page
+                    const uid = String(data.user_id);
+                    sessionStorage.setItem('otp_user_id', uid);
+                    window.location.href = '/otp?uid=' + uid;
                 } else {
                     window.location.href = '/';
                 }
