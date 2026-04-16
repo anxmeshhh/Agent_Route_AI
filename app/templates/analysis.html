@@ -194,33 +194,105 @@
     <!-- LEFT PANEL: Query + Live Reasoning -->
     <aside class="w-[320px] flex-shrink-0 flex flex-col border-r border-white/5 bg-surface-container-low overflow-hidden">
 
-        <!-- Query Card -->
-        <div class="p-4 border-b border-white/5 flex-shrink-0">
+        <!-- Shipment Creation Form -->
+        <div class="p-4 border-b border-white/5 flex-shrink-0 overflow-y-auto" style="max-height:56vh;">
             <div class="flex items-center gap-2 mb-3">
-                <span class="material-symbols-outlined text-secondary text-lg">alt_route</span>
+                <span class="material-symbols-outlined text-secondary text-lg">local_shipping</span>
                 <div>
-                    <h2 class="text-sm font-bold text-white">Route Intelligence Query</h2>
-                    <div class="text-[10px] text-outline">Land · Maritime · AI-powered routing</div>
+                    <h2 class="text-sm font-bold text-white">New Shipment</h2>
+                    <div class="text-[10px] text-outline" id="user-role-label">Route Intelligence · AI-powered analysis</div>
                 </div>
             </div>
-
-            <div class="flex gap-2 mb-3 route-type-row">
-                <button type="button" class="route-type-btn active" id="btn-land" onclick="setRouteType('land')">🚗 Road</button>
-                <button type="button" class="route-type-btn" id="btn-sea" onclick="setRouteType('sea')">🚢 Maritime</button>
-                <button type="button" class="route-type-btn" id="btn-air" onclick="setRouteType('air')">✈ Air</button>
-            </div>
-
-            <form id="analysis-form">
-                <textarea id="query-input" class="w-full bg-surface-container-highest border-none focus:ring-1 focus:ring-secondary/50 rounded-lg p-3 text-sm text-on-surface placeholder:text-outline/50 resize-none" rows="2"
-                    placeholder="e.g. 'Container from Delhi to Kerala in 3 days'"></textarea>
-                <div class="flex flex-wrap gap-1.5 mt-2 mb-3" id="example-chips">
-                    <button type="button" class="example-chip india" data-query="Pharmaceutical shipment from Delhi to Thiruvananthapuram Kerala in 3 days urgent">🇮🇳 Delhi→Kerala</button>
-                    <button type="button" class="example-chip india" data-query="Electronics cargo from Mumbai to Bangalore by road in 2 days">🇮🇳 Mumbai→BLR</button>
-                    <button type="button" class="example-chip india" data-query="General cargo from Delhi to Kolkata by road NH19 in 48 hours">🇮🇳 Delhi→Kolkata</button>
-                    <button type="button" class="example-chip" data-query="Electronics from Shanghai to Rotterdam via Suez Canal 28 days transit">🌊 Shanghai→Rotterdam</button>
+            <!-- UUID -->
+            <div class="mb-2">
+                <label class="text-[10px] font-bold uppercase tracking-wider text-outline block mb-1">Shipment ID</label>
+                <div class="flex gap-1.5">
+                    <input id="shipment-uuid" type="text" maxlength="36"
+                        class="flex-1 bg-surface-container-highest border-none focus:ring-1 focus:ring-secondary/50 rounded-lg px-3 py-2 text-[11px] font-mono text-secondary placeholder:text-outline/40"
+                        placeholder="Auto-generated"/>
+                    <button type="button" onclick="genUUID()" title="Regenerate"
+                        class="px-2.5 py-2 rounded-lg bg-surface-container-high border border-white/5 text-outline hover:text-secondary transition-all">
+                        <span class="material-symbols-outlined text-sm">refresh</span>
+                    </button>
                 </div>
+            </div>
+            <!-- Origin & Destination -->
+            <div class="grid grid-cols-1 gap-2 mb-2">
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-outline block mb-1">Origin</label>
+                    <input id="inp-origin" type="text"
+                        class="w-full bg-surface-container-highest border-none focus:ring-1 focus:ring-secondary/50 rounded-lg px-3 py-2 text-sm text-on-surface placeholder:text-outline/40"
+                        placeholder="e.g. Delhi, Mumbai, Shanghai"/>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-outline block mb-1">Destination</label>
+                    <input id="inp-dest" type="text"
+                        class="w-full bg-surface-container-highest border-none focus:ring-1 focus:ring-secondary/50 rounded-lg px-3 py-2 text-sm text-on-surface placeholder:text-outline/40"
+                        placeholder="e.g. Rotterdam, Kochi, Tokyo"/>
+                </div>
+            </div>
+            <!-- Transport Mode -->
+            <div class="mb-2">
+                <label class="text-[10px] font-bold uppercase tracking-wider text-outline block mb-1">Mode</label>
+                <div class="flex gap-1.5 route-type-row">
+                    <button type="button" class="route-type-btn active flex-1" id="btn-land" onclick="setRouteType('land')">&#x1F697; Road</button>
+                    <button type="button" class="route-type-btn flex-1" id="btn-sea"  onclick="setRouteType('sea')">&#x1F6A2; Sea</button>
+                    <button type="button" class="route-type-btn flex-1" id="btn-air"  onclick="setRouteType('air')">&#x2708; Air</button>
+                </div>
+            </div>
+            <!-- Cargo & Weight -->
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-outline block mb-1">Cargo Type</label>
+                    <select id="inp-cargo"
+                        class="w-full bg-surface-container-highest border-none focus:ring-1 focus:ring-secondary/50 rounded-lg px-3 py-2 text-xs text-on-surface">
+                        <option value="general">General</option>
+                        <option value="electronics">Electronics</option>
+                        <option value="perishables">Perishables</option>
+                        <option value="pharmaceuticals">Pharmaceuticals</option>
+                        <option value="automotive">Automotive</option>
+                        <option value="chemicals">Chemicals</option>
+                        <option value="bulk">Bulk</option>
+                        <option value="energy">Energy</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-outline block mb-1">Weight (kg)</label>
+                    <input id="inp-weight" type="number" min="0" step="1"
+                        class="w-full bg-surface-container-highest border-none focus:ring-1 focus:ring-secondary/50 rounded-lg px-3 py-2 text-xs text-on-surface placeholder:text-outline/40"
+                        placeholder="e.g. 2500"/>
+                </div>
+            </div>
+            <!-- Budget & Timeline -->
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-outline block mb-1">Budget (USD)</label>
+                    <div class="relative">
+                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[10px]">$</span>
+                        <input id="inp-budget" type="number" min="0" step="100"
+                            class="w-full bg-surface-container-highest border-none focus:ring-1 focus:ring-secondary/50 rounded-lg pl-5 pr-3 py-2 text-xs text-on-surface placeholder:text-outline/40"
+                            placeholder="e.g. 50000"/>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-outline block mb-1">Timeline (days)</label>
+                    <input id="inp-eta" type="number" min="1" max="365"
+                        class="w-full bg-surface-container-highest border-none focus:ring-1 focus:ring-secondary/50 rounded-lg px-3 py-2 text-xs text-on-surface placeholder:text-outline/40"
+                        placeholder="Auto (OSRM)"/>
+                </div>
+            </div>
+            <!-- Quick Examples -->
+            <div class="flex flex-wrap gap-1.5 mb-3" id="example-chips">
+                <button type="button" class="example-chip india" id="ex1">&#x1F1EE;&#x1F1F3; Delhi&#x2192;Kerala</button>
+                <button type="button" class="example-chip india" id="ex2">&#x1F1EE;&#x1F1F3; Mumbai&#x2192;BLR</button>
+                <button type="button" class="example-chip" id="ex3">&#x1F30A; Shanghai&#x2192;RTM</button>
+            </div>
+            <!-- Error -->
+            <div id="form-error" class="hidden mb-2 text-xs text-error bg-error/10 border border-error/20 rounded-lg px-3 py-2"></div>
+            <form id="analysis-form" onsubmit="return false;">
+                <textarea id="query-input" class="hidden"></textarea>
                 <button type="submit" id="analyze-btn" class="btn-analyze kinetic-gradient text-white">
-                    <span id="btn-text">⚡ Analyse & Simulate Route</span>
+                    <span id="btn-text">&#x26A1; Analyse &amp; Simulate Route</span>
                     <span id="btn-spinner" class="spin-ring hidden"></span>
                 </button>
             </form>
@@ -497,4 +569,135 @@ function switchTab(tabId) {
 
 <!-- main.js with ALL the logic -->
 <script src="{{ url_for('static', filename='js/main.js') }}?v=900"></script>
+
+<script>
+// ── UUID Generator ─────────────────────────────────────
+function genUUID() {
+    const seg = () => Math.random().toString(36).substr(2,8).toUpperCase();
+    document.getElementById('shipment-uuid').value = 'SHP-' + seg();
+}
+
+// ── Fill example ────────────────────────────────────────
+function fillExample(origin, dest, cargo, eta, budget, weight) {
+    document.getElementById('inp-origin').value  = origin;
+    document.getElementById('inp-dest').value    = dest;
+    document.getElementById('inp-cargo').value   = cargo;
+    document.getElementById('inp-eta').value     = eta;
+    document.getElementById('inp-budget').value  = budget;
+    document.getElementById('inp-weight').value  = weight;
+    if (!document.getElementById('shipment-uuid').value) genUUID();
+}
+
+// ── Wire example chips ──────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-generate UUID on load
+    genUUID();
+
+    // Load user info for role label
+    fetch('/api/auth/me', {credentials:'include'})
+        .then(r => r.ok ? r.json() : null)
+        .then(u => {
+            if (!u) return;
+            const lbl = document.getElementById('user-role-label');
+            if (lbl) {
+                const roleIcon = u.role === 'admin' ? '🛡️' : '👤';
+                lbl.textContent = roleIcon + ' ' + (u.display_name||u.role) + ' · ' + (u.org_name||'');
+            }
+        }).catch(() => {});
+
+    const ex1 = document.getElementById('ex1');
+    const ex2 = document.getElementById('ex2');
+    const ex3 = document.getElementById('ex3');
+    if (ex1) ex1.addEventListener('click', () => fillExample('Delhi','Kochi','pharmaceuticals',3,25000,500));
+    if (ex2) ex2.addEventListener('click', () => fillExample('Mumbai','Bangalore','electronics',2,15000,200));
+    if (ex3) ex3.addEventListener('click', () => fillExample('Shanghai','Rotterdam','electronics',28,85000,18000));
+});
+
+// ── Override form submission ─────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('analysis-form');
+    if (!form) return;
+
+    // Remove any existing listeners by cloning
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+
+    newForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const errBox = document.getElementById('form-error');
+        errBox.classList.add('hidden');
+
+        const origin = (document.getElementById('inp-origin')?.value || '').trim();
+        const dest   = (document.getElementById('inp-dest')?.value || '').trim();
+
+        if (!origin || !dest) {
+            errBox.textContent = 'Origin and Destination are required';
+            errBox.classList.remove('hidden');
+            return;
+        }
+
+        const payload = {
+            origin:        origin,
+            destination:   dest,
+            cargo_type:    document.getElementById('inp-cargo')?.value || 'general',
+            weight_kg:     parseFloat(document.getElementById('inp-weight')?.value) || null,
+            budget_usd:    parseFloat(document.getElementById('inp-budget')?.value) || null,
+            eta_days:      parseInt(document.getElementById('inp-eta')?.value)    || null,
+            shipment_uuid: document.getElementById('shipment-uuid')?.value || '',
+        };
+
+        const btn    = document.getElementById('analyze-btn');
+        const btnTxt = document.getElementById('btn-text');
+        const spin   = document.getElementById('btn-spinner');
+        btnTxt.textContent = 'Launching agents…';
+        spin?.classList.remove('hidden');
+        if (btn) btn.disabled = true;
+
+        try {
+            const res  = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                errBox.textContent = data.error || 'Analysis failed';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            // Show UUID in form
+            if (data.shipment_uuid) {
+                const uuidEl = document.getElementById('shipment-uuid');
+                if (uuidEl) uuidEl.value = data.shipment_uuid;
+            }
+
+            // Connect SSE stream (main.js exports startStream / window.startSSEStream)
+            if (typeof window.startSSEStream === 'function') {
+                window.startSSEStream(data.session_id, data.stream_url);
+            } else if (typeof startSSEStream === 'function') {
+                startSSEStream(data.session_id, data.stream_url);
+            } else {
+                // Fallback: directly open EventSource
+                const es = new EventSource(data.stream_url);
+                es.onmessage = function(ev) {
+                    try { window._handleSSEData && window._handleSSEData(JSON.parse(ev.data)); } catch(e){}
+                };
+                es.addEventListener('done', () => es.close());
+            }
+
+        } catch(err) {
+            errBox.textContent = 'Network error: ' + err.message;
+            errBox.classList.remove('hidden');
+        } finally {
+            btnTxt.textContent = '⚡ Analyse & Simulate Route';
+            spin?.classList.add('hidden');
+            if (btn) btn.disabled = false;
+        }
+    });
+});
+</script>
+
 </body></html>

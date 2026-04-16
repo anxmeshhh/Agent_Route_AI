@@ -42,8 +42,8 @@ def login_required(f):
             return jsonify({"error": "Token expired or invalid", "code": "INVALID_TOKEN"}), 401
 
         g.user_id = payload["sub"]
-        g.org_id = payload["org"]
-        g.role = payload.get("role", "member")
+        g.org_id  = payload["org"]
+        g.role    = payload.get("role", "user")  # 'user' | 'admin'
         return f(*args, **kwargs)
 
     return decorated
@@ -67,8 +67,8 @@ def admin_required(f):
             return jsonify({"error": "Admin access required", "code": "FORBIDDEN"}), 403
 
         g.user_id = payload["sub"]
-        g.org_id = payload["org"]
-        g.role = payload.get("role", "member")
+        g.org_id  = payload["org"]
+        g.role    = payload.get("role", "user")
         return f(*args, **kwargs)
 
     return decorated

@@ -211,14 +211,18 @@ def _clear_auth_cookies(response):
 @auth_bp.route("/auth/signup", methods=["POST"])
 def signup():
     """
-    Register a new organisation + first admin user.
-    Body: { org_name, display_name, email, password }
+    Register a new organisation + first user.
+    Body: { org_name, display_name, email, password, role? }
+    role must be 'user' or 'admin' (defaults to 'user' if omitted/invalid).
     """
     body = request.get_json(silent=True) or {}
     org_name = (body.get("org_name") or "").strip()
     display_name = (body.get("display_name") or "").strip()
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
+    # Role: only 'user' or 'admin' are valid; default to 'user'
+    requested_role = (body.get("role") or "user").strip().lower()
+    role = requested_role if requested_role in ("user", "admin") else "user"
 
     # ── Validation ────────────────────────────────────────────
     errors = {}
@@ -258,14 +262,14 @@ def signup():
         (org_name, slug)
     )
 
-    # ── Create admin user ─────────────────────────────────────
+    # ── Create user with chosen role ──────────────────────────
     e_enc = encrypt_email(email)
     p_hash = hash_password(password)
 
     user_id = execute_query(
         """INSERT INTO users (org_id, display_name, email_enc, email_hash, password_hash, role)
-           VALUES (%s, %s, %s, %s, %s, 'admin')""",
-        (org_id, display_name, e_enc, e_hash, p_hash)
+           VALUES (%s, %s, %s, %s, %s, %s)""",
+        (org_id, display_name, e_enc, e_hash, p_hash, role)
     )
 
     # ── OTP or direct token depending on config ─────────────────
@@ -291,7 +295,7 @@ def signup():
         }), 201
 
     # OTP disabled — issue tokens directly (for dev/testing)
-    access_token = generate_access_token(user_id, org_id, "admin")
+    access_token = generate_access_token(user_id, org_id, role)
     raw_refresh, refresh_hash = generate_refresh_token()
 
     cfg = current_app.config
@@ -309,7 +313,7 @@ def signup():
         "user": {
             "id": user_id,
             "display_name": display_name,
-            "role": "admin",
+            "role": role,
             "org_id": org_id,
             "org_name": org_name,
             "org_slug": slug,

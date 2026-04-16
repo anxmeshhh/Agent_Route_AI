@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS users (
     email_enc       VARBINARY(512) NOT NULL,      -- Fernet (AES-256) encrypted — PII
     email_hash      VARCHAR(64) NOT NULL UNIQUE,  -- SHA-256 for lookup (never exposed)
     password_hash   VARCHAR(256) NOT NULL,         -- bcrypt
-    role            ENUM('member','admin') DEFAULT 'member',
+    role            ENUM('user','member','admin') DEFAULT 'user',
     is_active       TINYINT(1) DEFAULT 1,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (org_id) REFERENCES organisations(id) ON DELETE CASCADE,

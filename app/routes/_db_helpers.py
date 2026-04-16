@@ -14,17 +14,20 @@ from ..database import execute_query
 logger = logging.getLogger(__name__)
 
 
-def _store_shipment(session_id: str, intake_result: dict, org_id: int = 1) -> int:
+def _store_shipment(session_id: str, intake_result: dict,
+                    org_id: int = 1, user_id: int = None) -> int:
     """Insert a new shipment row. org_id tags it to the user's organisation."""
     return execute_query(
         """
         INSERT INTO shipments
-            (session_id, query_text, port, port_city, eta_days, cargo_type,
-             vessel_name, origin_port, status, org_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'running', %s)
+            (session_id, shipment_uuid, query_text, port, port_city, eta_days,
+             cargo_type, vessel_name, origin_port, budget_usd, weight_kg,
+             status, org_id, user_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'running', %s, %s)
         """,
         (
             session_id,
+            intake_result.get("shipment_uuid"),
             intake_result["query_text"],
             intake_result.get("port"),
             intake_result.get("port_city"),
@@ -32,7 +35,10 @@ def _store_shipment(session_id: str, intake_result: dict, org_id: int = 1) -> in
             intake_result.get("cargo_type"),
             intake_result.get("vessel_name"),
             intake_result.get("origin_port"),
+            intake_result.get("budget_usd"),
+            intake_result.get("weight_kg"),
             org_id,
+            user_id,
         ),
     )
 

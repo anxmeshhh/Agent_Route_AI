@@ -322,15 +322,33 @@ let _currentUser = null;
 async function loadCurrentUser() {
     try {
         const r = await fetch('/api/auth/me', { credentials: 'include' });
-        if (r.status === 401) { window.location.href = '/login'; return; }
+        // 401 = no token, 404 = stale JWT (user deleted), 403 = inactive
+        if (r.status === 401 || r.status === 404 || r.status === 403) {
+            if (r.status === 404 || r.status === 403) {
+                try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(_) {}
+            }
+            window.location.href = '/login'; return;
+        }
         if (!r.ok) return;
         _currentUser = await r.json();
-        document.getElementById('user-chip-avatar').textContent = (_currentUser.display_name||'?')[0].toUpperCase();
+        const avatar = document.getElementById('user-chip-avatar');
+        if (avatar) {
+            avatar.textContent = (_currentUser.display_name||'?')[0].toUpperCase();
+            avatar.style.background = _currentUser.role === 'admin'
+                ? 'linear-gradient(135deg,#bd9dff,#7C3AED)'
+                : 'linear-gradient(135deg,#00d9ff,#006880)';
+        }
         document.getElementById('user-chip-name').textContent = _currentUser.display_name || 'User';
-        document.getElementById('user-chip-org').textContent = '🏢 ' + (_currentUser.org_name || '—');
+        const orgEl = document.getElementById('user-chip-org');
+        if (orgEl) {
+            const roleTag = _currentUser.role === 'admin'
+                ? '<span style="color:#bd9dff;font-size:9px;font-weight:700;margin-left:4px;">ADMIN</span>'
+                : '<span style="color:#00d9ff;font-size:9px;font-weight:700;margin-left:4px;">USER</span>';
+            orgEl.innerHTML = '🏢 ' + (_currentUser.org_name || '—') + roleTag;
+        }
         document.getElementById('welcome-name').textContent = _currentUser.display_name || 'Commander';
         document.getElementById('stat-org').textContent = _currentUser.org_name || '—';
-        document.getElementById('stat-role').textContent = _currentUser.role || '—';
+        document.getElementById('stat-role').textContent = (_currentUser.role||'—').toUpperCase();
         document.getElementById('logout-btn').addEventListener('click', async () => {
             await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
             window.location.href = '/login';

@@ -86,11 +86,11 @@
                 </div>
             </div>
 
-            <!-- Step 2: Admin Account -->
+            <!-- Step 2: Account -->
             <div class="step" id="step-2">
                 <div class="mb-6 space-y-2">
-                    <h1 class="text-2xl font-bold font-headline tracking-tight text-on-surface">Admin Account</h1>
-                    <p class="text-sm text-on-surface-variant">Step 2 — Create your admin credentials</p>
+                    <h1 class="text-2xl font-bold font-headline tracking-tight text-on-surface">Create Account</h1>
+                    <p class="text-sm text-on-surface-variant">Step 2 — Set up your credentials and access role</p>
                 </div>
                 <div class="hidden bg-error/10 border border-error/20 text-error text-sm px-4 py-3 rounded-lg mb-4" id="signup-error-banner">
                     <span id="signup-error-text"></span>
@@ -118,6 +118,33 @@
                         </div>
                         <span class="text-[10px] font-mono text-outline uppercase" id="pw-label">Enter password</span>
                     </div>
+
+                    <!-- Role Selector -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-outline block">Access Role</label>
+                        <div class="grid grid-cols-2 gap-3" id="role-selector">
+                            <!-- USER -->
+                            <button type="button" id="role-user"
+                                onclick="selectRole('user')"
+                                class="role-btn relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border border-white/10 bg-surface-container-highest hover:border-secondary/50 transition-all group selected">
+                                <span class="material-symbols-outlined text-3xl text-secondary" style="font-variation-settings:'FILL' 1;">person</span>
+                                <span class="font-bold text-sm text-on-surface uppercase tracking-widest">User</span>
+                                <span class="text-[10px] text-on-surface-variant text-center leading-relaxed">Standard access · View &amp; analyse shipments</span>
+                                <div class="absolute top-2 right-2 w-3 h-3 rounded-full border-2 border-secondary bg-secondary scale-0 transition-transform" id="dot-user"></div>
+                            </button>
+                            <!-- ADMIN -->
+                            <button type="button" id="role-admin"
+                                onclick="selectRole('admin')"
+                                class="role-btn relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border border-white/10 bg-surface-container-highest hover:border-primary/50 transition-all group">
+                                <span class="material-symbols-outlined text-3xl text-primary" style="font-variation-settings:'FILL' 1;">shield_person</span>
+                                <span class="font-bold text-sm text-on-surface uppercase tracking-widest">Admin</span>
+                                <span class="text-[10px] text-on-surface-variant text-center leading-relaxed">Full control · Manage org &amp; members</span>
+                                <div class="absolute top-2 right-2 w-3 h-3 rounded-full border-2 border-primary bg-primary scale-0 transition-transform" id="dot-admin"></div>
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-outline" id="role-hint">📋 Standard user access selected. Admins can manage organisation members.</p>
+                        <input type="hidden" id="signup-role" value="user">
+                    </div>
                     <div class="flex gap-3">
                         <button type="button" class="px-6 py-3 rounded-lg bg-surface-container-high border border-white/5 text-on-surface font-semibold text-sm hover:bg-surface-bright transition-all" onclick="goStep1()">← Back</button>
                         <button type="submit" class="flex-1 kinetic-gradient py-3 rounded-lg font-bold text-on-primary-fixed uppercase tracking-widest text-xs active:scale-[0.98] transition-transform hover:brightness-110 flex items-center justify-center gap-2" id="signup-btn">
@@ -144,6 +171,11 @@
     </div>
 </main>
 
+<style>
+.role-btn.selected { border-color: rgba(0,217,255,0.5); background: rgba(0,217,255,0.06); }
+.role-btn.selected #dot-user, .role-btn.selected #dot-admin { transform: scale(1); }
+#role-admin.selected { border-color: rgba(189,157,255,0.5); background: rgba(189,157,255,0.06); }
+</style>
 <script>
 function goStep2() {
     const org = document.getElementById('signup-org').value.trim();
@@ -156,6 +188,24 @@ function goStep2() {
 function goStep1() {
     document.getElementById('step-2').classList.remove('active');
     document.getElementById('step-1').classList.add('active');
+}
+function selectRole(role) {
+    document.getElementById('signup-role').value = role;
+    document.getElementById('role-user').classList.remove('selected');
+    document.getElementById('role-admin').classList.remove('selected');
+    document.getElementById('role-user').querySelector('#dot-user').style.transform = 'scale(0)';
+    document.getElementById('role-admin').querySelector('#dot-admin').style.transform = 'scale(0)';
+    const btn = document.getElementById('role-' + role);
+    btn.classList.add('selected');
+    btn.querySelector('#dot-' + role).style.transform = 'scale(1)';
+    const hint = document.getElementById('role-hint');
+    if (role === 'admin') {
+        hint.textContent = '🛡️ Admin selected — you will have full organisation management control.';
+        hint.classList.add('text-primary/70'); hint.classList.remove('text-outline');
+    } else {
+        hint.textContent = '📋 Standard user access selected. Admins can manage organisation members.';
+        hint.classList.remove('text-primary/70'); hint.classList.add('text-outline');
+    }
 }
 
 // Password strength
@@ -189,7 +239,8 @@ document.getElementById('signup-form').addEventListener('submit', async function
         org_name: document.getElementById('signup-org').value.trim(),
         display_name: document.getElementById('signup-name').value.trim(),
         email: document.getElementById('signup-email').value.trim().toLowerCase(),
-        password: document.getElementById('signup-password').value
+        password: document.getElementById('signup-password').value,
+        role: document.getElementById('signup-role').value || 'user'
     };
     try {
         const res = await fetch('/api/auth/signup', {

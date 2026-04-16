@@ -21,8 +21,13 @@ let _currentUser = null;  // populated by loadCurrentUser()
 async function loadCurrentUser() {
     try {
         const r = await fetch('/api/auth/me', { credentials: 'include' });
-        if (r.status === 401) {
-            // Not logged in — redirect to login unless we're already there
+
+        // 401 = not logged in, 404 = JWT valid but user deleted (stale token), 403 = inactive
+        if (r.status === 401 || r.status === 404 || r.status === 403) {
+            // Clear stale auth cookies by calling logout silently
+            if (r.status === 404 || r.status === 403) {
+                try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(_) {}
+            }
             if (!window.location.pathname.startsWith('/login') &&
                 !window.location.pathname.startsWith('/signup') &&
                 !window.location.pathname.startsWith('/otp')) {
@@ -44,9 +49,20 @@ function _renderUserChip(user) {
     const avatar  = el('user-chip-avatar');
     const nameEl  = el('user-chip-name');
     const orgEl   = el('user-chip-org');
-    if (avatar)  avatar.textContent  = (user.display_name || '?')[0].toUpperCase();
-    if (nameEl)  nameEl.textContent  = user.display_name || 'Unknown';
-    if (orgEl)   orgEl.textContent   = '🏢 ' + (user.org_name || 'No Org');
+    if (avatar) {
+        avatar.textContent = (user.display_name || '?')[0].toUpperCase();
+        // Color avatar by role
+        avatar.style.background = user.role === 'admin'
+            ? 'linear-gradient(135deg,#bd9dff,#7C3AED)'
+            : 'linear-gradient(135deg,#00d9ff,#006880)';
+    }
+    if (nameEl) nameEl.textContent = user.display_name || 'Unknown';
+    if (orgEl) {
+        const roleTag = user.role === 'admin'
+            ? '<span style="color:#bd9dff;font-size:9px;font-weight:700;margin-left:4px;">ADMIN</span>'
+            : '<span style="color:#00d9ff;font-size:9px;font-weight:700;margin-left:4px;">USER</span>';
+        orgEl.innerHTML = '🏢 ' + (user.org_name || 'No Org') + roleTag;
+    }
     chip.classList.remove('hidden');
 
     el('logout-btn')?.addEventListener('click', async () => {

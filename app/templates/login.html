@@ -94,6 +94,12 @@
                 <div class="space-y-2">
                     <h2 class="text-xl font-semibold text-on-surface">Welcome back</h2>
                     <p class="text-on-surface-variant text-sm">Access your intelligence fleet dashboard.</p>
+                    <!-- Role badge — shown after successful auth -->
+                    <div id="role-badge-wrap" class="hidden flex items-center gap-2 mt-1">
+                        <span class="material-symbols-outlined text-sm" id="role-badge-icon" style="font-variation-settings:'FILL' 1;">person</span>
+                        <span class="text-xs font-bold uppercase tracking-widest font-mono" id="role-badge-label">User</span>
+                        <span class="text-xs text-on-surface-variant">access level</span>
+                    </div>
                 </div>
 
                 <!-- Error Banner -->
@@ -239,6 +245,18 @@
             const data = await res.json();
 
             if (res.ok) {
+                // Show role badge briefly before redirect
+                const userRole = (data.user && data.user.role) ? data.user.role : 'user';
+                const badge = document.getElementById('role-badge-wrap');
+                const icon  = document.getElementById('role-badge-icon');
+                const label = document.getElementById('role-badge-label');
+                if (badge && icon && label) {
+                    icon.textContent  = userRole === 'admin' ? 'shield_person' : 'person';
+                    icon.style.color  = userRole === 'admin' ? '#bd9dff' : '#00d9ff';
+                    label.textContent = userRole.toUpperCase();
+                    label.style.color = userRole === 'admin' ? '#bd9dff' : '#00d9ff';
+                    badge.classList.remove('hidden');
+                }
                 if (data.otp_required) {
                     // OTP_ENABLED=true: Store user_id, go to OTP verification page
                     const uid = String(data.user_id);

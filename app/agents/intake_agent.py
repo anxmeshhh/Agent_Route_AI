@@ -67,21 +67,66 @@ class IntakeAgent:
     All reference data loaded from MySQL — no hardcoded values.
     """
 
-    def run(self, query_text: str, session_id: Optional[str] = None) -> dict:
+    def run(self, query_text: str, session_id: Optional[str] = None,
+            structured_override: dict = None) -> dict:
         if not session_id:
             session_id = str(uuid.uuid4())
+        structured_override = structured_override or {}
 
         result = {
-            "session_id":  session_id,
-            "query_text":  query_text.strip(),
-            "port":        None,   # destination port/city
-            "port_city":   None,   # weather lookup city
-            "eta_days":    None,
-            "cargo_type":  "general",
-            "vessel_name": None,
-            "origin_port": None,
-            "logs":        [],
+            "session_id":     session_id,
+            "query_text":     query_text.strip(),
+            "port":           structured_override.get("port"),
+            "port_city":      structured_override.get("port_city"),
+            "eta_days":       structured_override.get("eta_days"),
+            "cargo_type":     structured_override.get("cargo_type", "general"),
+            "vessel_name":    None,
+            "origin_port":    structured_override.get("origin_port"),
+            "shipment_uuid":  structured_override.get("shipment_uuid"),
+            "budget_usd":     structured_override.get("budget_usd"),
+            "weight_kg":      structured_override.get("weight_kg"),
+            "logs":           [],
         }
+
+        # ── Structured override mode: form fields provided, skip NLP ──
+        if structured_override.get("origin_port") and structured_override.get("port"):
+            result["logs"].append({
+                "agent":  "intake",
+                "action": (f"Structured form intake — "
+                           f"Origin: {result['origin_port']} | Dest: {result['port']} | "
+                           f"Cargo: {result['cargo_type']} | "
+                           f"UUID: {result.get('shipment_uuid', '—')}"),
+                "status": "success",
+                "data": {
+                    "port":           result["port"],
+                    "port_city":      result["port_city"],
+                    "eta_days":       result["eta_days"],
+                    "cargo_type":     result["cargo_type"],
+                    "origin_port":    result["origin_port"],
+                    "weight_kg":      result["weight_kg"],
+                    "budget_usd":     result["budget_usd"],
+                    "shipment_uuid":  result["shipment_uuid"],
+                },
+            })
+            # Compute ETA via OSRM if not provided
+            if not result["eta_days"]:
+                computed_eta = self._compute_eta_from_route(
+                    result["origin_port"], result["port"]
+                )
+                result["eta_days"]   = computed_eta["days"]
+                result["eta_hours"]  = computed_eta.get("hours")
+                result["eta_source"] = computed_eta["source"]
+                result["logs"].append({
+                    "agent":  "intake",
+                    "action": f"ETA computed: {computed_eta['days']} day(s) ({computed_eta['source']})",
+                    "status": "success",
+                })
+            logger.info(
+                f"[intake] structured: origin={result['origin_port']} dest={result['port']} "
+                f"eta={result['eta_days']}d cargo={result['cargo_type']} "
+                f"uuid={result.get('shipment_uuid')}"
+            )
+            return result
 
         text = query_text.strip()
         tl   = text.lower()
@@ -238,11 +283,14 @@ class IntakeAgent:
                        f"Cargo: {result['cargo_type']}"),
             "status": "success",
             "data": {
-                "port":        result["port"],
-                "port_city":   result["port_city"],
-                "eta_days":    result["eta_days"],
-                "cargo_type":  result["cargo_type"],
-                "origin_port": result["origin_port"],
+                "port":          result["port"],
+                "port_city":     result["port_city"],
+                "eta_days":      result["eta_days"],
+                "cargo_type":    result["cargo_type"],
+                "origin_port":   result["origin_port"],
+                "shipment_uuid": result.get("shipment_uuid"),
+                "weight_kg":     result.get("weight_kg"),
+                "budget_usd":    result.get("budget_usd"),
             },
         })
 
