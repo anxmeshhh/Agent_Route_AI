@@ -3,6 +3,7 @@ app/__init__.py — Flask application factory
 """
 from flask import Flask
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Config
 from .database import init_db_pool, init_schema, close_db
@@ -16,6 +17,9 @@ def create_app():
         static_url_path="/static",
     )
     app.config.from_object(Config)
+
+    # Trust 1 level of reverse proxy (ngrok / nginx / etc.)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     # CORS for streaming + cookie-based auth
     CORS(app, supports_credentials=True)
