@@ -869,12 +869,18 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 Built for the **Predictive Delay and Risk Intelligence Agent** hackathon track.
 
 ## Screenshots
-![alt text](image.png)
-![alt text](image-1.png)
-![alt text](image-2.png)
-![alt text](image-3.png)
-![alt text](image-4.png)
-![alt text](image-5.png)
+<img width="1600" height="769" alt="image" src="https://github.com/user-attachments/assets/0f8daa29-ac0b-440d-b3b2-dfac5adcdbd2" />
+<img width="679" height="500" alt="image" src="https://github.com/user-attachments/assets/6cab30f9-f482-4ea9-9d93-fda55ded59e0" />
+<img width="639" height="635" alt="image" src="https://github.com/user-attachments/assets/9156f42b-f8ee-45bd-88d0-167b29f83e73" />
+<img width="1600" height="773" alt="image" src="https://github.com/user-attachments/assets/7c80b11b-412f-42bf-a5bb-319637644230" />
+<img width="1600" height="771" alt="image" src="https://github.com/user-attachments/assets/7f3f5650-33fa-4625-851a-3721edad6c29" />
+<img width="1600" height="774" alt="image" src="https://github.com/user-attachments/assets/eee222ae-34dc-4e82-89da-64c0042ca90c" />
+
+
+
+
+
+
 
 ---
 
