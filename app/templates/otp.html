@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AgentRoute AI — Verify your identity">
+    <title>Verify OTP — AgentRoute AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=503">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=503">
+</head>
+<body class="auth-body">
+
+    <div class="auth-bg">
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
+        <div class="bg-grid"></div>
+    </div>
+
+    <div class="auth-center">
+
+        <div class="auth-brand">
+            <div class="brand-logo-wrap">
+                <span class="brand-logo-icon">🔐</span>
+            </div>
+            <h1 class="auth-brand-title">Verify <span class="text-yellow">Identity</span></h1>
+            <p class="auth-brand-sub">A 6-digit code was sent to your registered email</p>
+        </div>
+
+        <div class="auth-card" id="auth-card">
+            <div class="auth-card-header">
+                <h2 class="auth-card-title">Enter OTP</h2>
+                <p class="auth-card-sub">Code expires in <span id="otp-countdown" class="text-yellow">5:00</span></p>
+            </div>
+
+            <!-- 6-box OTP input -->
+            <div class="otp-boxes" id="otp-boxes">
+                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" id="otp-0">
+                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" id="otp-1">
+                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" id="otp-2">
+                <span class="otp-sep">—</span>
+                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" id="otp-3">
+                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" id="otp-4">
+                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" id="otp-5">
+            </div>
+
+            <div class="auth-error-banner hidden" id="otp-error-banner">
+                <span id="otp-error-text">Invalid or expired OTP</span>
+            </div>
+
+            <button type="button" class="auth-submit-btn" id="otp-submit-btn" onclick="submitOTP()">
+                <span id="otp-btn-text">Verify Code</span>
+                <span id="otp-spinner" class="auth-spinner hidden"></span>
+            </button>
+
+            <div style="text-align:center;margin-top:16px;">
+                <button type="button" class="auth-link-btn" id="resend-btn" onclick="resendOTP()" disabled>
+                    Resend code (<span id="resend-countdown">30</span>s)
+                </button>
+            </div>
+
+            <div class="auth-divider"><span>Wrong account?</span></div>
+            <a href="/login" class="auth-alt-btn">← Back to Login</a>
+        </div>
+
+        <p class="auth-footer">AgentRoute AI — MFA via Email (Yellow Advantage ✓)</p>
+    </div>
+
+    <script>
+    (function() {
+        const userId = sessionStorage.getItem('otp_user_id');
+        if (!userId) { window.location.href = '/login'; return; }
+
+        // ── OTP box focus-forward behaviour ──────────────────
+        const boxes = document.querySelectorAll('.otp-box');
+        boxes.forEach((box, i) => {
+            box.addEventListener('input', function() {
+                const v = this.value.replace(/\D/g, '');
+                this.value = v;
+                if (v && i < boxes.length - 1) boxes[i + 1].focus();
+                if (v) checkAutoSubmit();
+            });
+            box.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' && !this.value && i > 0) boxes[i - 1].focus();
+                if (e.key === 'ArrowLeft' && i > 0) boxes[i - 1].focus();
+                if (e.key === 'ArrowRight' && i < boxes.length - 1) boxes[i + 1].focus();
+            });
+            box.addEventListener('paste', function(e) {
+                const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+                if (pasted.length === 6) {
+                    pasted.split('').forEach((c, idx) => { if (boxes[idx]) boxes[idx].value = c; });
+                    boxes[5].focus();
+                    setTimeout(submitOTP, 200);
+                }
+                e.preventDefault();
+            });
+        });
+        boxes[0].focus();
+
+        function checkAutoSubmit() {
+            const code = Array.from(boxes).map(b => b.value).join('');
+            if (code.length === 6) setTimeout(submitOTP, 300);
+        }
+
+        // ── OTP countdown (5 min) ─────────────────────────────
+        let otpSeconds = 300;
+        const otpCountdown = document.getElementById('otp-countdown');
+        const otpInterval = setInterval(() => {
+            otpSeconds--;
+            if (otpSeconds <= 0) {
+                clearInterval(otpInterval);
+                otpCountdown.textContent = 'Expired';
+                otpCountdown.style.color = '#ef4444';
+            } else {
+                const m = Math.floor(otpSeconds / 60);
+                const s = otpSeconds % 60;
+                otpCountdown.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
+
+        // ── Resend cooldown (30s) ─────────────────────────────
+        let resendSec = 30;
+        const resendBtn  = document.getElementById('resend-btn');
+        const resendCnt  = document.getElementById('resend-countdown');
+        const resendInterval = setInterval(() => {
+            resendSec--;
+            resendCnt.textContent = resendSec;
+            if (resendSec <= 0) {
+                clearInterval(resendInterval);
+                resendBtn.disabled = false;
+                resendBtn.textContent = 'Resend code';
+            }
+        }, 1000);
+
+        window.submitOTP = async function() {
+            const code = Array.from(boxes).map(b => b.value).join('');
+            if (code.length !== 6) return;
+
+            const errBanner = document.getElementById('otp-error-banner');
+            const errText   = document.getElementById('otp-error-text');
+            const btn       = document.getElementById('otp-submit-btn');
+            const btnTxt    = document.getElementById('otp-btn-text');
+            const spin      = document.getElementById('otp-spinner');
+            errBanner.classList.add('hidden');
+            btnTxt.textContent = 'Verifying…';
+            spin.classList.remove('hidden');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/auth/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ user_id: parseInt(userId), otp_code: code })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    sessionStorage.removeItem('otp_user_id');
+                    window.location.href = '/';
+                } else {
+                    errText.textContent = data.error || 'Invalid OTP. Try again.';
+                    errBanner.classList.remove('hidden');
+                    boxes.forEach(b => { b.value = ''; b.classList.add('otp-error-box'); });
+                    setTimeout(() => boxes.forEach(b => b.classList.remove('otp-error-box')), 1000);
+                    boxes[0].focus();
+                }
+            } catch(err) {
+                errText.textContent = 'Network error — try again.';
+                errBanner.classList.remove('hidden');
+            } finally {
+                btnTxt.textContent = 'Verify Code';
+                spin.classList.add('hidden');
+                btn.disabled = false;
+            }
+        };
+
+        window.resendOTP = async function() {
+            // Re-login to trigger new OTP (requires page to have the email stored)
+            resendBtn.disabled = true;
+            resendBtn.textContent = 'Sent!';
+            setTimeout(() => { window.location.href = '/login'; }, 1500);
+        };
+    })();
+    </script>
+</body>
+</html>

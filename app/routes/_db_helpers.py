@@ -14,13 +14,14 @@ from ..database import execute_query
 logger = logging.getLogger(__name__)
 
 
-def _store_shipment(session_id: str, intake_result: dict) -> int:
+def _store_shipment(session_id: str, intake_result: dict, org_id: int = 1) -> int:
+    """Insert a new shipment row. org_id tags it to the user's organisation."""
     return execute_query(
         """
         INSERT INTO shipments
             (session_id, query_text, port, port_city, eta_days, cargo_type,
-             vessel_name, origin_port, status)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'running')
+             vessel_name, origin_port, status, org_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'running', %s)
         """,
         (
             session_id,
@@ -31,6 +32,7 @@ def _store_shipment(session_id: str, intake_result: dict) -> int:
             intake_result.get("cargo_type"),
             intake_result.get("vessel_name"),
             intake_result.get("origin_port"),
+            org_id,
         ),
     )
 

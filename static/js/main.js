@@ -15,6 +15,46 @@ window.onerror = (msg, src, line) =>
 window.onunhandledrejection = e =>
     console.error('[PROMISE-ERR]', e.reason);
 
+/* ── Auth state ──────────────────────────────────────────── */
+let _currentUser = null;  // populated by loadCurrentUser()
+
+async function loadCurrentUser() {
+    try {
+        const r = await fetch('/api/auth/me', { credentials: 'include' });
+        if (r.status === 401) {
+            // Not logged in — redirect to login unless we're already there
+            if (!window.location.pathname.startsWith('/login') &&
+                !window.location.pathname.startsWith('/signup') &&
+                !window.location.pathname.startsWith('/otp')) {
+                window.location.href = '/login';
+            }
+            return;
+        }
+        if (!r.ok) return;
+        _currentUser = await r.json();
+        _renderUserChip(_currentUser);
+        loadApprovedOrgs();
+    } catch(e) {
+        console.warn('[auth] Could not reach /api/auth/me:', e.message);
+    }
+}
+
+function _renderUserChip(user) {
+    const chip    = el('user-chip'); if (!chip) return;
+    const avatar  = el('user-chip-avatar');
+    const nameEl  = el('user-chip-name');
+    const orgEl   = el('user-chip-org');
+    if (avatar)  avatar.textContent  = (user.display_name || '?')[0].toUpperCase();
+    if (nameEl)  nameEl.textContent  = user.display_name || 'Unknown';
+    if (orgEl)   orgEl.textContent   = '🏢 ' + (user.org_name || 'No Org');
+    chip.classList.remove('hidden');
+
+    el('logout-btn')?.addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        window.location.href = '/login';
+    });
+}
+
 /* ── State ───────────────────────────────────────────────── */
 let _bgMap           = null;
 let _routeLayers     = [];
@@ -724,6 +764,9 @@ function _stopTimer() { if (_timerInterval) { clearInterval(_timerInterval); _ti
    8. FORM + SSE + ANALYSIS
 ═══════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+    // Auth guard: load user, redirect to /login if unauthenticated
+    loadCurrentUser();
+
     setTimeout(setupLeafletMap, 300);
 
     el('sim-speed-slider')?.addEventListener('input', function() {
@@ -791,8 +834,13 @@ async function startAnalysis(query) {
     try {
         const r = await fetch('/api/analyze', {
             method:'POST', headers:{'Content-Type':'application/json'},
+            credentials: 'include',
             body: JSON.stringify({ query }),
         });
+        if (r.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const d = await r.json();
         if (d.error) throw new Error(d.error);
@@ -1218,7 +1266,9 @@ function _renderAltRouteComparison(altRoute, transportMode) {
 ═══════════════════════════════════════════════════════════ */
 async function loadHistory() {
     try {
-        const r = await fetch('/api/history'); if (!r.ok) return;
+        const r = await fetch('/api/history', { credentials: 'include' });
+        if (r.status === 401) return;  // not logged in yet
+        if (!r.ok) return;
         renderHistory(await r.json());
     } catch(_) {}
 }
@@ -1232,9 +1282,12 @@ function renderHistory(items) {
         const color = item.status==='failed'?'#f43f5e':score==null?'#64748b':score<30?'#22c55e':score<55?'#f59e0b':score<75?'#f97316':'#ef4444';
         const onclick = (item.status==='failed'||score==null)?`alert('Analysis pending or failed.')`:`loadResult('${item.session_id}')`;
         const q = escHtml((item.query_text||'').substring(0,45))+((item.query_text||'').length>45?'…':'');
+        // Cross-org tag — show org name for partner org entries
+        const orgTag = (!item.is_own_org && item.org_name)
+            ? `<span class="history-item-org-tag">${escHtml(item.org_name)}</span>` : '';
         return `<button class="history-item" onclick="${onclick}">
             <div class="history-badge" style="background:${color}22;color:${color};border:1px solid ${color}44">${escHtml(level)}</div>
-            <div class="history-query">${q}</div>
+            <div class="history-query">${q}${orgTag}</div>
             <div class="history-score" style="color:${color}">${score??'?'}</div>
         </button>`;
     }).join('');
@@ -1253,7 +1306,112 @@ async function loadResult(sessionId) {
     } catch(err) { alert(err.message||'Could not load result'); }
 }
 
+/* ══════════════════════════════════════════════════════════
+   12. ORG VISIBILITY
+═══════════════════════════════════════════════════════════ */
+async function loadApprovedOrgs() {
+    try {
+        const r = await fetch('/api/auth/visibility/approved', { credentials: 'include' });
+        if (!r.ok) return;
+        const orgs = await r.json();
+        const panel = el('org-visibility-panel');
+        if (!panel) return;
+        panel.classList.remove('hidden');
+        const list = el('org-analysis-list');
+        if (!list) return;
+        if (!orgs.length) {
+            list.innerHTML = '<div class="placeholder-text">No partner orgs yet. Click + to request.</div>';
+            return;
+        }
+        list.innerHTML = orgs.map(o => `
+            <div class="org-item" title="Analyses from ${escHtml(o.name)} are shown in your history">
+                <span style="font-size:14px">🏢</span>
+                <span class="org-item-name">${escHtml(o.name)}</span>
+            </div>
+        `).join('');
+    } catch(e) {
+        console.warn('[org] Could not load approved orgs:', e.message);
+    }
+}
+
+async function openVisibilityModal() {
+    const modal = el('visibility-modal');
+    const list  = el('modal-org-list');
+    if (!modal || !list) return;
+    modal.classList.remove('hidden');
+    list.innerHTML = '<div class="placeholder-text">Loading organisations…</div>';
+
+    try {
+        const [orgsRes, approvedRes] = await Promise.all([
+            fetch('/api/auth/orgs', { credentials: 'include' }),
+            fetch('/api/auth/visibility/approved', { credentials: 'include' }),
+        ]);
+        const orgs     = orgsRes.ok     ? await orgsRes.json()     : [];
+        const approved = approvedRes.ok ? await approvedRes.json() : [];
+        const approvedIds = new Set(approved.map(o => o.id));
+        const myOrgId  = _currentUser?.org_id;
+
+        const others = orgs.filter(o => o.id !== myOrgId);
+        if (!others.length) {
+            list.innerHTML = '<div class="placeholder-text">No other organisations found.</div>';
+            return;
+        }
+
+        list.innerHTML = others.map(o => {
+            const isApproved = approvedIds.has(o.id);
+            const btnHtml = isApproved
+                ? `<button class="org-select-btn sent" disabled>✓ Approved</button>`
+                : `<button class="org-select-btn" onclick="sendVisibilityRequest(${o.id},'${escHtml(o.name)}')">Request Access</button>`;
+            return `
+                <div class="org-select-item">
+                    <span class="org-select-icon">🏢</span>
+                    <div style="flex:1;min-width:0">
+                        <div class="org-select-name">${escHtml(o.name)}</div>
+                        <div class="org-select-slug">${escHtml(o.slug || '')}</div>
+                    </div>
+                    ${btnHtml}
+                </div>`;
+        }).join('');
+    } catch(e) {
+        list.innerHTML = '<div class="placeholder-text">Error loading organisations.</div>';
+    }
+}
+
+function closeVisibilityModal() {
+    el('visibility-modal')?.classList.add('hidden');
+}
+
+async function sendVisibilityRequest(targetOrgId, orgName) {
+    try {
+        const r = await fetch('/api/auth/visibility/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ target_org_id: targetOrgId }),
+        });
+        const data = await r.json();
+        if (r.ok || r.status === 200) {
+            // Update the button in the modal
+            openVisibilityModal();
+        } else {
+            alert(data.error || 'Request failed');
+        }
+    } catch(e) {
+        alert('Network error — please try again.');
+    }
+}
+
+// Close modal on overlay click
+document.addEventListener('DOMContentLoaded', () => {
+    el('visibility-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeVisibilityModal();
+    });
+});
+
 /* ── Exports ─────────────────────────────────────────────── */
-window.runShipSimulation = runShipSimulation;
-window.loadResult        = loadResult;
-window.setRouteType      = setRouteType;
+window.runShipSimulation     = runShipSimulation;
+window.loadResult            = loadResult;
+window.setRouteType          = setRouteType;
+window.openVisibilityModal   = openVisibilityModal;
+window.closeVisibilityModal  = closeVisibilityModal;
+window.sendVisibilityRequest = sendVisibilityRequest;

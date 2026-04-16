@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AgentRoute AI — Login to your organisation workspace">
+    <title>Login — AgentRoute AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=504">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=504">
+</head>
+<body class="auth-body">
+
+    <div class="auth-bg">
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
+        <div class="bg-grid"></div>
+    </div>
+
+    <div class="auth-center">
+
+        <div class="auth-brand">
+            <div class="brand-logo-wrap">
+                <span class="brand-logo-icon">🗺</span>
+            </div>
+            <h1 class="auth-brand-title">AgentRoute<span class="text-purple">AI</span></h1>
+            <p class="auth-brand-sub">Organisation-based Shipment Intelligence</p>
+        </div>
+
+        <div class="auth-card" id="auth-card">
+            <div class="auth-card-header">
+                <h2 class="auth-card-title">Welcome back</h2>
+                <p class="auth-card-sub">Sign in to your organisation workspace</p>
+            </div>
+
+            <!-- Google OAuth Button -->
+            <a href="/api/auth/google/login" class="google-btn" id="google-login-btn">
+                <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                    <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                Continue with Google
+            </a>
+
+            <div class="auth-divider"><span>or sign in with email</span></div>
+
+            <form id="login-form" class="auth-form" novalidate>
+                <div class="form-group">
+                    <label class="form-label" for="login-email">Work Email</label>
+                    <div class="input-wrap">
+                        <span class="input-icon">✉</span>
+                        <input type="email" id="login-email" name="email" class="form-input"
+                               placeholder="you@company.com" autocomplete="email" required>
+                    </div>
+                    <span class="field-error" id="err-email"></span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="login-password">Password</label>
+                    <div class="input-wrap">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="login-password" name="password" class="form-input"
+                               placeholder="••••••••" autocomplete="current-password" required>
+                        <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Show password">👁</button>
+                    </div>
+                    <span class="field-error" id="err-password"></span>
+                </div>
+
+                <div class="auth-error-banner hidden" id="auth-error-banner">
+                    <span id="auth-error-text">Invalid email or password</span>
+                </div>
+
+                <button type="submit" class="auth-submit-btn" id="login-btn">
+                    <span id="login-btn-text">Sign In</span>
+                    <span id="login-spinner" class="auth-spinner hidden"></span>
+                </button>
+            </form>
+
+            <div class="auth-divider"><span>New to the platform?</span></div>
+            <a href="/signup" class="auth-alt-btn" id="goto-signup">Create Organisation & Account</a>
+        </div>
+
+        <!-- RBAC Badge Row -->
+        <div class="auth-badges">
+            <span class="auth-badge green">🔒 AES-256 PII Encryption</span>
+            <span class="auth-badge yellow">🛡 JWT + MFA OTP</span>
+            <span class="auth-badge purple">👥 RBAC Admin/Member</span>
+        </div>
+
+        <p class="auth-footer">
+            AgentRoute AI — Multi-tenant Shipment Intelligence&nbsp;&nbsp;|&nbsp;&nbsp;
+            <span style="color:#22c55e">🟢 Mandatory</span>&nbsp;
+            <span style="color:#facc15">🟡 Advantage</span>
+        </p>
+    </div>
+
+    <script>
+    (function() {
+        // Show OAuth error from URL params (e.g. ?error=oauth_state_mismatch)
+        const params = new URLSearchParams(window.location.search);
+        const oauthErr = params.get('error');
+        if (oauthErr) {
+            const msgs = {
+                'oauth_state_mismatch': 'Security check failed. Please try again.',
+                'google_token_failed': 'Google sign-in failed. Try again.',
+                'google_userinfo_failed': 'Could not fetch your Google profile.',
+                'google_email_unverified': 'Your Google email is not verified.',
+                'account_inactive': 'Your account is inactive. Contact your admin.',
+            };
+            const banner = document.getElementById('auth-error-banner');
+            document.getElementById('auth-error-text').textContent = msgs[oauthErr] || 'Sign-in error: ' + oauthErr;
+            banner.classList.remove('hidden');
+        }
+
+        // If already logged in → dashboard
+        fetch('/api/auth/me', { credentials: 'include' })
+            .then(r => { if (r.ok) window.location.href = '/'; });
+
+        // Password toggle
+        document.getElementById('toggle-pw').addEventListener('click', function() {
+            const pw = document.getElementById('login-password');
+            pw.type = pw.type === 'password' ? 'text' : 'password';
+        });
+
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const banner  = document.getElementById('auth-error-banner');
+            const errTxt  = document.getElementById('auth-error-text');
+            const btn     = document.getElementById('login-btn');
+            const btnTxt  = document.getElementById('login-btn-text');
+            const spin    = document.getElementById('login-spinner');
+            banner.classList.add('hidden');
+            btnTxt.textContent = 'Signing in…';
+            spin.classList.remove('hidden');
+            btn.disabled = true;
+
+            const email    = document.getElementById('login-email').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    if (data.otp_required) {
+                        sessionStorage.setItem('otp_user_id', data.user_id);
+                        window.location.href = '/otp';
+                    } else {
+                        window.location.href = '/';
+                    }
+                } else {
+                    errTxt.textContent = data.error || 'Login failed.';
+                    banner.classList.remove('hidden');
+                    const card = document.getElementById('auth-card');
+                    card.classList.add('shake');
+                    setTimeout(() => card.classList.remove('shake'), 500);
+                }
+            } catch(err) {
+                errTxt.textContent = 'Network error — please try again.';
+                banner.classList.remove('hidden');
+            } finally {
+                btnTxt.textContent = 'Sign In';
+                spin.classList.add('hidden');
+                btn.disabled = false;
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AgentRoute AI — Create your organisation workspace">
+    <title>Create Organisation — AgentRoute AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=503">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}?v=503">
+</head>
+<body class="auth-body">
+
+    <!-- Animated background -->
+    <div class="auth-bg">
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
+        <div class="bg-grid"></div>
+    </div>
+
+    <div class="auth-center">
+
+        <!-- Brand -->
+        <div class="auth-brand">
+            <div class="brand-logo-wrap">
+                <span class="brand-logo-icon">🏢</span>
+            </div>
+            <h1 class="auth-brand-title">Create Your <span class="text-green">Organisation</span></h1>
+            <p class="auth-brand-sub">Set up your company workspace. Team members can join and collaborate.</p>
+        </div>
+
+        <!-- Step indicator -->
+        <div class="step-indicator">
+            <div class="step active" id="step-dot-1"><span>1</span><label>Organisation</label></div>
+            <div class="step-line"></div>
+            <div class="step" id="step-dot-2"><span>2</span><label>Admin Account</label></div>
+            <div class="step-line"></div>
+            <div class="step" id="step-dot-3"><span>3</span><label>Done</label></div>
+        </div>
+
+        <!-- Card -->
+        <div class="auth-card" id="auth-card">
+
+            <!-- Step 1: Organisation details -->
+            <div id="signup-step-1">
+                <div class="auth-card-header">
+                    <h2 class="auth-card-title">Your Organisation</h2>
+                    <p class="auth-card-sub">How should we identify your company?</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="org-name">Organisation Name</label>
+                    <div class="input-wrap">
+                        <span class="input-icon">🏢</span>
+                        <input type="text" id="org-name" class="form-input"
+                               placeholder="e.g. Acme Logistics Pvt. Ltd." autocomplete="organization">
+                    </div>
+                    <span class="field-error" id="err-org-name"></span>
+                    <div class="slug-preview hidden" id="slug-preview">
+                        Workspace ID: <code id="slug-display"></code>
+                    </div>
+                </div>
+
+                <button type="button" class="auth-submit-btn" id="step1-next-btn" onclick="nextStep(1)">
+                    Continue with Email →
+                </button>
+
+                <div class="auth-divider"><span>or use Google</span></div>
+
+                <a href="/api/auth/google/login" class="google-btn">
+                    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                        <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                    </svg>
+                    Sign up with Google (auto org)
+                </a>
+
+                <div class="auth-divider"><span>Already have an account?</span></div>
+                <a href="/login" class="auth-alt-btn">Sign In Instead</a>
+
+            </div>
+
+            <!-- Step 2: Admin account -->
+            <div id="signup-step-2" class="hidden">
+                <div class="auth-card-header">
+                    <h2 class="auth-card-title">Admin Account</h2>
+                    <p class="auth-card-sub">You'll be the admin. You can invite team members later.</p>
+                </div>
+
+                <form id="signup-form" class="auth-form" novalidate>
+                    <div class="form-group">
+                        <label class="form-label" for="display-name">Your Name</label>
+                        <div class="input-wrap">
+                            <span class="input-icon">👤</span>
+                            <input type="text" id="display-name" class="form-input"
+                                   placeholder="Full Name" autocomplete="name">
+                        </div>
+                        <span class="field-error" id="err-display-name"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="signup-email">Work Email</label>
+                        <div class="input-wrap">
+                            <span class="input-icon">✉</span>
+                            <input type="email" id="signup-email" class="form-input"
+                                   placeholder="you@company.com" autocomplete="email">
+                        </div>
+                        <span class="field-error" id="err-signup-email"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="signup-password">Password</label>
+                        <div class="input-wrap">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" id="signup-password" class="form-input"
+                                   placeholder="Min 8 characters" autocomplete="new-password">
+                            <button type="button" class="toggle-pw" id="toggle-pw2" aria-label="Show password">👁</button>
+                        </div>
+                        <span class="field-error" id="err-signup-password"></span>
+                        <!-- Password strength bar -->
+                        <div class="pw-strength-wrap">
+                            <div class="pw-strength-bar" id="pw-strength-bar"></div>
+                        </div>
+                        <span class="pw-strength-label" id="pw-strength-label"></span>
+                    </div>
+
+                    <div class="auth-error-banner hidden" id="signup-error-banner">
+                        <span id="signup-error-text">Signup failed</span>
+                    </div>
+
+                    <div style="display:flex;gap:10px;margin-top:4px;">
+                        <button type="button" class="auth-back-btn" onclick="backStep(2)">← Back</button>
+                        <button type="submit" class="auth-submit-btn" id="signup-btn" style="flex:1">
+                            <span id="signup-btn-text">Create Organisation</span>
+                            <span id="signup-spinner" class="auth-spinner hidden"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 3: Success -->
+            <div id="signup-step-3" class="hidden text-center">
+                <div class="success-icon-wrap">
+                    <div class="success-icon">✅</div>
+                </div>
+                <h2 class="auth-card-title" style="margin-top:12px">Organisation Created!</h2>
+                <p class="auth-card-sub" id="success-msg">Your workspace is ready.</p>
+                <div class="org-badge" id="success-org-badge"></div>
+                <p style="font-size:12px;color:var(--text-dim);margin-top:16px;">Redirecting to dashboard…</p>
+            </div>
+
+        </div>
+
+        <p class="auth-footer">
+            AgentRoute AI — Multi-tenant Organisation Platform
+        </p>
+    </div>
+
+    <script>
+    (function() {
+        // If already logged in, go to dashboard
+        fetch('/api/auth/me', { credentials: 'include' })
+            .then(r => { if (r.ok) window.location.href = '/'; });
+
+        // Slug preview on org name input
+        const orgInput = document.getElementById('org-name');
+        const slugPreview = document.getElementById('slug-preview');
+        const slugDisplay = document.getElementById('slug-display');
+
+        orgInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            if (val.length >= 2) {
+                const slug = val.toLowerCase().replace(/[^\w\s-]/g,'').replace(/[\s_-]+/g,'-').replace(/^-|-$/g,'').slice(0,64);
+                slugDisplay.textContent = slug;
+                slugPreview.classList.remove('hidden');
+            } else {
+                slugPreview.classList.add('hidden');
+            }
+        });
+
+        // Password toggle
+        document.getElementById('toggle-pw2').addEventListener('click', function() {
+            const pw = document.getElementById('signup-password');
+            pw.type = pw.type === 'password' ? 'text' : 'password';
+        });
+
+        // Password strength
+        document.getElementById('signup-password').addEventListener('input', function() {
+            const v = this.value;
+            const bar = document.getElementById('pw-strength-bar');
+            const lbl = document.getElementById('pw-strength-label');
+            let score = 0;
+            if (v.length >= 8) score++;
+            if (/[A-Z]/.test(v)) score++;
+            if (/[0-9]/.test(v)) score++;
+            if (/[^A-Za-z0-9]/.test(v)) score++;
+            const levels = [
+                {w:'0%', c:'', t:''},
+                {w:'25%',c:'#ef4444',t:'Weak'},
+                {w:'50%',c:'#f97316',t:'Fair'},
+                {w:'75%',c:'#facc15',t:'Good'},
+                {w:'100%',c:'#22c55e',t:'Strong'},
+            ];
+            const l = levels[score] || levels[0];
+            bar.style.width = l.w;
+            bar.style.background = l.c;
+            lbl.textContent = l.t;
+            lbl.style.color = l.c;
+        });
+    })();
+
+    function nextStep(from) {
+        if (from === 1) {
+            const orgName = document.getElementById('org-name').value.trim();
+            const errEl = document.getElementById('err-org-name');
+            if (!orgName || orgName.length < 2) {
+                errEl.textContent = 'Organisation name must be at least 2 characters';
+                return;
+            }
+            errEl.textContent = '';
+            document.getElementById('signup-step-1').classList.add('hidden');
+            document.getElementById('signup-step-2').classList.remove('hidden');
+            document.getElementById('step-dot-2').classList.add('active');
+        }
+    }
+
+    function backStep(to) {
+        if (to === 2) {
+            document.getElementById('signup-step-2').classList.add('hidden');
+            document.getElementById('signup-step-1').classList.remove('hidden');
+            document.getElementById('step-dot-2').classList.remove('active');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('signup-form');
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const errBanner = document.getElementById('signup-error-banner');
+            const errText   = document.getElementById('signup-error-text');
+            errBanner.classList.add('hidden');
+
+            const org_name     = document.getElementById('org-name').value.trim();
+            const display_name = document.getElementById('display-name').value.trim();
+            const email        = document.getElementById('signup-email').value.trim();
+            const password     = document.getElementById('signup-password').value;
+
+            // Client-side validation
+            let valid = true;
+            [['err-display-name', display_name.length >= 2, 'Name must be at least 2 characters'],
+             ['err-signup-email', email && email.includes('@'), 'Valid email required'],
+             ['err-signup-password', password.length >= 8, 'Min 8 characters'],
+            ].forEach(([id, ok, msg]) => {
+                document.getElementById(id).textContent = ok ? '' : msg;
+                if (!ok) valid = false;
+            });
+            if (!valid) return;
+
+            const btn    = document.getElementById('signup-btn');
+            const btnTxt = document.getElementById('signup-btn-text');
+            const spin   = document.getElementById('signup-spinner');
+            btnTxt.textContent = 'Creating…';
+            spin.classList.remove('hidden');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ org_name, display_name, email, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Show success step
+                    document.getElementById('signup-step-2').classList.add('hidden');
+                    document.getElementById('signup-step-3').classList.remove('hidden');
+                    document.getElementById('step-dot-3').classList.add('active');
+                    document.getElementById('success-msg').textContent =
+                        `Welcome, ${data.user.display_name}! Your workspace is ready.`;
+                    document.getElementById('success-org-badge').textContent =
+                        `🏢 ${data.user.org_name}`;
+                    setTimeout(() => { window.location.href = '/'; }, 2000);
+                } else {
+                    const errs = data.errors || {};
+                    if (errs.org_name) document.getElementById('err-org-name').textContent = errs.org_name;
+                    if (errs.display_name) document.getElementById('err-display-name').textContent = errs.display_name;
+                    if (errs.email) document.getElementById('err-signup-email').textContent = errs.email;
+                    if (errs.password) document.getElementById('err-signup-password').textContent = errs.password;
+                    errText.textContent = data.error || 'Signup failed. Please try again.';
+                    if (!Object.keys(errs).length) errBanner.classList.remove('hidden');
+                }
+            } catch(err) {
+                errText.textContent = 'Network error — please try again.';
+                errBanner.classList.remove('hidden');
+            } finally {
+                btnTxt.textContent = 'Create Organisation';
+                spin.classList.add('hidden');
+                btn.disabled = false;
+            }
+        });
+    });
+    </script>
+</body>
+</html>

@@ -50,6 +50,15 @@
 
         <div class="header-right">
             <span class="system-status"><span class="status-dot"></span> System Online</span>
+            <!-- User Chip (populated by JS after /api/auth/me) -->
+            <div class="user-chip hidden" id="user-chip">
+                <div class="user-chip-avatar" id="user-chip-avatar">?</div>
+                <div class="user-chip-info">
+                    <div class="user-chip-name" id="user-chip-name">—</div>
+                    <div class="user-chip-org" id="user-chip-org">—</div>
+                </div>
+                <button type="button" class="user-chip-logout" id="logout-btn" title="Logout">⏻</button>
+            </div>
         </div>
     </header>
 
@@ -139,7 +148,38 @@
                 </div>
             </div>
 
+            <!-- Org Visibility Panel — cross-org analyses -->
+            <div class="panel-card sidebar-org-panel hidden" id="org-visibility-panel">
+                <div class="panel-header" style="margin-bottom:6px;">
+                    <span class="panel-icon" style="background:rgba(250,204,21,0.15);color:#facc15;">🌐</span>
+                    <h2 class="panel-title" style="font-size:11px;">Partner Orgs</h2>
+                    <button type="button" id="request-visibility-btn" class="icon-btn ml-auto"
+                            title="Request org access" onclick="openVisibilityModal()">+</button>
+                </div>
+                <div class="org-list-compact" id="org-analysis-list">
+                    <div class="placeholder-text">No partner orgs yet</div>
+                </div>
+            </div>
+
         </aside>
+
+        <!-- Org Visibility Request Modal -->
+        <div class="modal-overlay hidden" id="visibility-modal">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3 class="modal-title">🌐 Request Org Visibility</h3>
+                    <button type="button" class="modal-close" onclick="closeVisibilityModal()">✕</button>
+                </div>
+                <p class="modal-sub">Select an organisation to request access to their analyses. Their admin must approve.</p>
+                <div class="org-select-list" id="modal-org-list">
+                    <div class="placeholder-text">Loading organisations…</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="auth-alt-btn" onclick="closeVisibilityModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
 
         <!-- ════════════════════════════════════ CENTER MAP ════════════════════════════════════ -->
         <section class="map-section">

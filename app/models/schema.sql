@@ -1,5 +1,6 @@
 -- ============================================================
 -- Predictive Delay & Risk Intelligence Agent — MySQL Schema
+-- v2.0 — Organisation-based multi-tenant auth added
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS shipment_risk_db
@@ -7,24 +8,100 @@ CREATE DATABASE IF NOT EXISTS shipment_risk_db
 
 USE shipment_risk_db;
 
+-- ── Organisations ─────────────────────────────────────────────
+-- Every company / client is an organisation (multi-tenant root)
+CREATE TABLE IF NOT EXISTS organisations (
+    id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name         VARCHAR(128) NOT NULL UNIQUE,
+    slug         VARCHAR(64)  NOT NULL UNIQUE,   -- URL-safe identifier
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Default org for legacy/unauthenticated shipments
+INSERT IGNORE INTO organisations (id, name, slug) VALUES (1, 'Default Organisation', 'default');
+
+-- ── Users ─────────────────────────────────────────────────────
+-- One user belongs to exactly one organisation
+CREATE TABLE IF NOT EXISTS users (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    org_id          INT UNSIGNED NOT NULL,
+    display_name    VARCHAR(128) NOT NULL,
+    email_enc       VARBINARY(512) NOT NULL,      -- Fernet (AES-256) encrypted — PII
+    email_hash      VARCHAR(64) NOT NULL UNIQUE,  -- SHA-256 for lookup (never exposed)
+    password_hash   VARCHAR(256) NOT NULL,         -- bcrypt
+    role            ENUM('member','admin') DEFAULT 'member',
+    is_active       TINYINT(1) DEFAULT 1,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (org_id) REFERENCES organisations(id) ON DELETE CASCADE,
+    INDEX idx_email_hash (email_hash),
+    INDEX idx_org        (org_id)
+) ENGINE=InnoDB;
+
+-- ── MFA OTP codes ─────────────────────────────────────────────
+-- 6-digit codes with 5-min TTL for two-factor auth
+CREATE TABLE IF NOT EXISTS mfa_otp (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT UNSIGNED NOT NULL,
+    otp_code    VARCHAR(6) NOT NULL,
+    expires_at  DATETIME NOT NULL,
+    used        TINYINT(1) DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user (user_id)
+) ENGINE=InnoDB;
+
+-- ── Refresh Tokens ────────────────────────────────────────────
+-- JWT refresh tokens stored as SHA-256 hashes (7-day TTL)
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT UNSIGNED NOT NULL,
+    token_hash  VARCHAR(64) NOT NULL UNIQUE,
+    expires_at  DATETIME NOT NULL,
+    revoked     TINYINT(1) DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user  (user_id),
+    INDEX idx_token (token_hash)
+) ENGINE=InnoDB;
+
+-- ── Org Visibility Requests ───────────────────────────────────
+-- Cross-org data sharing: org A requests to see org B's analyses
+CREATE TABLE IF NOT EXISTS org_visibility_requests (
+    id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    requester_org_id INT UNSIGNED NOT NULL,
+    target_org_id    INT UNSIGNED NOT NULL,
+    status           ENUM('pending','approved','rejected') DEFAULT 'pending',
+    reviewed_by      INT UNSIGNED,                -- admin user id who reviewed
+    reviewed_at      DATETIME,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_org_pair (requester_org_id, target_org_id),
+    FOREIGN KEY (requester_org_id) REFERENCES organisations(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_org_id)   REFERENCES organisations(id) ON DELETE CASCADE,
+    INDEX idx_target (target_org_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB;
+
 -- ── Shipments ────────────────────────────────────────────────
 -- Each row is one user query / analysis session
 CREATE TABLE IF NOT EXISTS shipments (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    session_id      VARCHAR(36) NOT NULL UNIQUE,   -- UUID per analysis run
-    query_text      TEXT NOT NULL,                 -- raw NL input
-    port            VARCHAR(128),                  -- extracted port name
-    port_city       VARCHAR(128),                  -- city for weather API
-    eta_days        TINYINT UNSIGNED,              -- days until arrival
-    cargo_type      VARCHAR(128),                  -- extracted cargo type
+    org_id          INT UNSIGNED DEFAULT 1,
+    session_id      VARCHAR(36) NOT NULL UNIQUE,
+    query_text      TEXT NOT NULL,
+    port            VARCHAR(128),
+    port_city       VARCHAR(128),
+    eta_days        TINYINT UNSIGNED,
+    cargo_type      VARCHAR(128),
     vessel_name     VARCHAR(128),
     origin_port     VARCHAR(128),
     status          ENUM('pending','running','completed','failed') DEFAULT 'pending',
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (org_id) REFERENCES organisations(id),
     INDEX idx_port      (port),
     INDEX idx_status    (status),
-    INDEX idx_created   (created_at)
+    INDEX idx_created   (created_at),
+    INDEX idx_org       (org_id)
 ) ENGINE=InnoDB;
 
 -- ── Risk Assessments ─────────────────────────────────────────

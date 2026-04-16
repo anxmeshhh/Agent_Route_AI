@@ -77,10 +77,25 @@ def init_schema(app):
     """Create all tables from schema.sql if they don't exist."""
     schema_path = os.path.join(os.path.dirname(__file__), "models", "schema.sql")
     with open(schema_path, "r", encoding="utf-8") as f:
-        sql = f.read()
+        raw = f.read()
 
-    # Split on semicolons and execute each statement
-    statements = [s.strip() for s in sql.split(";") if s.strip()]
+    # Strip single-line SQL comments (-- ...) before splitting
+    import re
+    cleaned = re.sub(r'--[^\n]*', '', raw)
+
+    # Split on semicolons; skip blank / whitespace-only fragments
+    statements = [s.strip() for s in cleaned.split(";")]
+    statements = [s for s in statements if s and not s.isspace()]
+
+    # Errors that are always safe to ignore
+    SAFE_ERRNOS = {
+        1007,  # database already exists
+        1050,  # table already exists
+        1060,  # duplicate column
+        1061,  # duplicate key name
+        1826,  # duplicate foreign key constraint
+        1022,  # duplicate key (alt form)
+    }
 
     conn = None
     try:
@@ -97,7 +112,7 @@ def init_schema(app):
                 try:
                     cursor.execute(stmt)
                 except mysql.connector.Error as e:
-                    if e.errno != 1007:  # ignore "database exists"
+                    if e.errno not in SAFE_ERRNOS:
                         app.logger.warning(f"Schema stmt warning: {e}")
         conn.commit()
         cursor.close()

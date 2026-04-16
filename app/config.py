@@ -34,3 +34,29 @@ class Config:
     # Agent settings
     AGENT_MAX_RETRIES = int(os.getenv("AGENT_MAX_RETRIES", "2"))
     MAX_GRAPH_ITERATIONS = int(os.getenv("MAX_GRAPH_ITERATIONS", "5"))
+
+    # ── Auth & Security ──────────────────────────────────────────
+    # Fernet symmetric key for PII encryption (email stored encrypted in DB)
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    FERNET_KEY = os.getenv("FERNET_KEY", "")
+
+    # JWT signing secret (access token 15 min / refresh token 7 days)
+    JWT_SECRET = os.getenv("JWT_SECRET", "jwt-dev-secret-change-in-production")
+    JWT_ACCESS_TTL_MINUTES = int(os.getenv("JWT_ACCESS_TTL_MINUTES", "15"))
+    JWT_REFRESH_TTL_DAYS = int(os.getenv("JWT_REFRESH_TTL_DAYS", "7"))
+
+    # SMTP for MFA OTP emails
+    SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER = os.getenv("SMTP_USER", "")
+    SMTP_PASS = os.getenv("SMTP_PASS", "")
+    SMTP_FROM = os.getenv("SMTP_FROM", "AgentRouteAI <noreply@agentroute.ai>")
+
+    # Set OTP_ENABLED=false in .env to skip MFA during development
+    OTP_ENABLED = os.getenv("OTP_ENABLED", "false").lower() == "true"
+
+    # ── Google OAuth 2.0 ─────────────────────────────────────────
+    GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    # Base URL for OAuth redirect (change to your ngrok/production URL if needed)
+    APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:5000")

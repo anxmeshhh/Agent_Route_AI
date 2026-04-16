@@ -21,6 +21,7 @@ Endpoints (all under /api prefix):
   GET  /api/tools            — tools_routes
   GET  /api/route            — route_engine
   GET  /api/route-analysis   — route_engine
+  POST /api/auth/...         — auth_routes  (NEW: organisation-based auth)
 """
 from flask import Blueprint
 
@@ -37,6 +38,7 @@ from .analytics_routes import analytics_bp
 from .feedback_routes import feedback_bp
 from .tools_routes import tools_bp
 from .route_engine import route_bp
+from .auth_routes import auth_bp
 
 # ── Register children onto api_bp ─────────────────────────────────
 api_bp.register_blueprint(analyze_bp)
@@ -48,3 +50,4 @@ api_bp.register_blueprint(analytics_bp)
 api_bp.register_blueprint(feedback_bp)
 api_bp.register_blueprint(tools_bp)
 api_bp.register_blueprint(route_bp)
+api_bp.register_blueprint(auth_bp)

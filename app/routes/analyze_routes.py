@@ -8,22 +8,27 @@ import time
 import logging
 import threading
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 
 from ..agents.intake_agent import IntakeAgent
 from ..database import execute_query
 from ._sse import push_sse_event, mark_session_done, init_sse_session
 from ._db_helpers import _store_shipment, _update_shipment_status, _log_to_db
+from ..auth.decorators import login_required
 
 logger = logging.getLogger(__name__)
 analyze_bp = Blueprint("analyze", __name__)
 
 
 @analyze_bp.route("/analyze", methods=["POST"])
+@login_required
 def analyze():
-    """Start an analysis run using the agentic graph."""
+    """Start an analysis run using the agentic graph. Requires valid JWT."""
     body = request.get_json(silent=True) or {}
     query_text = (body.get("query") or "").strip()
+
+    # Capture org_id from the JWT (set by @login_required in g)
+    org_id = getattr(g, "org_id", 1)
 
     # ── Input validation ──────────────────────────────────────
     if not query_text:
@@ -38,13 +43,12 @@ def analyze():
     query_text = _re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', query_text)
 
     session_id = str(uuid.uuid4())
-
     init_sse_session(session_id)
 
     app = current_app._get_current_object()
     thread = threading.Thread(
         target=_run_analysis_pipeline,
-        args=(app, session_id, query_text),
+        args=(app, session_id, query_text, org_id),
         daemon=True,
     )
     thread.start()
@@ -56,12 +60,13 @@ def analyze():
     })
 
 
-def _run_analysis_pipeline(app, session_id: str, query_text: str):
+def _run_analysis_pipeline(app, session_id: str, query_text: str, org_id: int = 1):
     """
     Runs the full agentic graph in a background thread.
     1. Intake Agent parses the query
     2. AgentGraph orchestrates all agents via LLM-based routing
     3. Results stream to UI via SSE
+    org_id tags the shipment to the requesting user's organisation.
     """
     with app.app_context():
         try:
@@ -92,7 +97,7 @@ def _run_analysis_pipeline(app, session_id: str, query_text: str):
                 "status": "started",
             })
 
-            shipment_id = _store_shipment(session_id, intake_result)
+            shipment_id = _store_shipment(session_id, intake_result, org_id)
             _log_to_db(session_id, "intake", "Shipment stored in database",
                        "success", {"shipment_id": shipment_id})
 

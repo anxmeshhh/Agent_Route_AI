@@ -17,7 +17,7 @@ def create_app():
     )
     app.config.from_object(Config)
 
-    # CORS for streaming
+    # CORS for streaming + cookie-based auth
     CORS(app, supports_credentials=True)
 
     # Database
@@ -27,7 +27,7 @@ def create_app():
 
     app.teardown_appcontext(close_db)
 
-    # Blueprints
+    # ── Blueprints ────────────────────────────────────────────
     from .routes.main import main_bp
     from .routes.api import api_bp
 
