@@ -45,4 +45,40 @@ def create_app():
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
 
+    # ── JSON error handlers — never return HTML for API routes ────
+    from flask import jsonify as _jf, request as _req
+    import traceback as _tb
+
+    @app.errorhandler(400)
+    def _e400(e):
+        if _req.path.startswith("/api"):
+            return _jf({"error": str(e.description) if hasattr(e, "description") else "Bad request"}), 400
+        return e
+
+    @app.errorhandler(404)
+    def _e404(e):
+        if _req.path.startswith("/api"):
+            return _jf({"error": "Not found"}), 404
+        return e
+
+    @app.errorhandler(405)
+    def _e405(e):
+        if _req.path.startswith("/api"):
+            return _jf({"error": "Method not allowed"}), 405
+        return e
+
+    @app.errorhandler(500)
+    def _e500(e):
+        if _req.path.startswith("/api"):
+            app.logger.error(f"API 500: {_req.method} {_req.path} — {e}\n{_tb.format_exc()}")
+            return _jf({"error": f"Internal server error: {str(e)}"}), 500
+        return e
+
+    @app.errorhandler(Exception)
+    def _unhandled(e):
+        if _req.path.startswith("/api"):
+            app.logger.error(f"Unhandled: {_req.method} {_req.path} — {e}\n{_tb.format_exc()}")
+            return _jf({"error": f"Server error: {str(e)}"}), 500
+        raise e
+
     return app

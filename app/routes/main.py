@@ -43,6 +43,11 @@ def analysis_page():
     return render_template("analysis.html", google_maps_key=Config.GOOGLE_MAPS_API_KEY)
 
 
+@main_bp.route("/admin")
+def admin_page():
+    return render_template("admin.html")
+
+
 @main_bp.route("/health")
 def health():
     return {"status": "ok", "service": "Predictive Delay & Risk Intelligence Agent"}

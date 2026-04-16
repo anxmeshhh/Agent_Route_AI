@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Super Admin | AgentRouteAI</title>
+<meta name="description" content="Super Admin control panel for AgentRouteAI — system logs, user management, ticket monitoring, and system health."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "surface-container-high": "#1d1f2b",
+        "on-primary-fixed": "#000000",
+        "surface-bright": "#2a2b3a",
+        "primary-container": "#b28cff",
+        "on-surface": "#f1effd",
+        "surface-variant": "#242532",
+        "surface-container-highest": "#242532",
+        "background": "#0d0e17",
+        "error": "#ff6e84",
+        "surface-container": "#181924",
+        "surface": "#0d0e17",
+        "secondary": "#00d9ff",
+        "outline-variant": "#474752",
+        "primary-dim": "#8a4cfc",
+        "surface-container-low": "#12131d",
+        "primary": "#bd9dff",
+        "secondary-container": "#00687b",
+        "outline": "#757480",
+        "on-surface-variant": "#abaab7"
+      },
+      fontFamily: { headline: ["Inter"], body: ["Inter"], mono: ["JetBrains Mono"] }
+    }
+  }
+};
+</script>
+<style>
+.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;}
+.glass{background:rgba(24,25,36,0.7);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);}
+.stat-card{background:rgba(24,25,36,0.5);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;transition:all .2s;}
+.stat-card:hover{border-color:rgba(0,217,255,0.2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+.admin-tab{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;color:#757480;cursor:pointer;transition:all .2s;border:1px solid transparent;background:transparent;}
+.admin-tab:hover{color:#abaab7;background:rgba(255,255,255,0.03);}
+.admin-tab.active{color:#00d9ff;background:rgba(0,217,255,0.08);border-color:rgba(0,217,255,0.2);}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{text-align:left;padding:10px 12px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#757480;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:700;}
+.tbl td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.03);color:#abaab7;}
+.tbl tr:hover td{background:rgba(255,255,255,0.02);}
+.pill{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;}
+.pill-active{background:rgba(34,197,94,0.15);color:#22c55e;}
+.pill-inactive{background:rgba(239,68,68,0.15);color:#ef4444;}
+.pill-admin{background:rgba(189,157,255,0.15);color:#bd9dff;}
+.pill-superadmin{background:rgba(0,217,255,0.15);color:#00d9ff;}
+.pill-user{background:rgba(255,255,255,0.06);color:#757480;}
+.pill-open{background:rgba(0,217,255,0.1);color:#00d9ff;}
+.pill-completed{background:rgba(34,197,94,0.1);color:#22c55e;}
+.pill-failed{background:rgba(239,68,68,0.1);color:#ef4444;}
+.pill-in_progress{background:rgba(251,191,36,0.1);color:#fbbf24;}
+.btn-sm{padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#abaab7;}
+.btn-sm:hover{background:rgba(255,255,255,0.06);color:#f1effd;}
+.btn-danger{border-color:rgba(239,68,68,0.3);color:#ef4444;}
+.btn-danger:hover{background:rgba(239,68,68,0.1);}
+.btn-primary{border-color:rgba(0,217,255,0.3);color:#00d9ff;}
+.btn-primary:hover{background:rgba(0,217,255,0.08);}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:100;display:flex;align-items:center;justify-content:center;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease-out;}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 8px rgba(0,217,255,0.3)}50%{box-shadow:0 0 16px rgba(0,217,255,0.6)}}
+.pulse-glow{animation:pulse-glow 2s ease-in-out infinite;}
+.log-success{color:#22c55e;}.log-started{color:#00d9ff;}.log-failed{color:#ef4444;}.log-skipped{color:#fbbf24;}
+</style>
+</head>
+<body class="bg-background text-on-surface font-body min-h-screen flex flex-col selection:bg-primary/30">
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- TOP NAV BAR                                    -->
+<!-- ═══════════════════════════════════════════════ -->
+<header class="flex items-center justify-between px-6 py-3 border-b border-white/5 glass sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-gradient-to-br from-secondary to-primary rounded-lg flex items-center justify-center shadow-[0_0_12px_rgba(0,217,255,0.3)]">
+            <span class="material-symbols-outlined text-white text-xl" style="font-variation-settings:'FILL' 1;">shield_person</span>
+        </div>
+        <div>
+            <h1 class="text-sm font-bold tracking-tight">
+                <span class="bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">Super Admin</span>
+                <span class="text-on-surface-variant font-normal ml-1">Console</span>
+            </h1>
+            <p class="text-[9px] text-outline font-mono uppercase tracking-widest">AgentRouteAI • System Control</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg" style="background:rgba(0,217,255,0.06);border:1px solid rgba(0,217,255,0.15);">
+            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span class="text-[10px] font-mono text-secondary" id="admin-user-name">System Admin</span>
+        </div>
+        <a href="/" class="btn-sm">← Dashboard</a>
+        <button class="btn-sm btn-danger" id="admin-logout-btn">Logout</button>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- MAIN CONTENT                                   -->
+<!-- ═══════════════════════════════════════════════ -->
+<main class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Tab Bar -->
+    <div class="flex gap-2 px-6 py-3 border-b border-white/5 overflow-x-auto flex-shrink-0">
+        <button class="admin-tab active" onclick="switchAdminTab('overview',this)" id="tab-overview">
+            <span class="material-symbols-outlined text-xs mr-1 align-middle">dashboard</span>Overview
+        </button>
+        <button class="admin-tab" onclick="switchAdminTab('users',this)" id="tab-users">
+            <span class="material-symbols-outlined text-xs mr-1 align-middle">group</span>Users
+        </button>
+        <button class="admin-tab" onclick="switchAdminTab('tickets',this)" id="tab-tickets">
+            <span class="material-symbols-outlined text-xs mr-1 align-middle">confirmation_number</span>Tickets
+        </button>
+        <button class="admin-tab" onclick="switchAdminTab('logs',this)" id="tab-logs">
+            <span class="material-symbols-outlined text-xs mr-1 align-middle">terminal</span>Agent Logs
+        </button>
+        <button class="admin-tab" onclick="switchAdminTab('health',this)" id="tab-health">
+            <span class="material-symbols-outlined text-xs mr-1 align-middle">monitor_heart</span>Health
+        </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="flex-1 overflow-y-auto p-6">
+
+        <!-- ════════ OVERVIEW TAB ════════ -->
+        <div class="admin-pane fade-in" id="pane-overview">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card">
+                    <div class="flex items-center gap-2 mb-2"><span class="material-symbols-outlined text-secondary text-lg">group</span><span class="text-[10px] text-outline uppercase tracking-wider font-bold">Users</span></div>
+                    <div class="text-2xl font-bold text-on-surface font-mono" id="s-users">—</div>
+                    <div class="text-[10px] text-outline mt-1"><span id="s-active-users">—</span> active</div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex items-center gap-2 mb-2"><span class="material-symbols-outlined text-primary text-lg">apartment</span><span class="text-[10px] text-outline uppercase tracking-wider font-bold">Organisations</span></div>
+                    <div class="text-2xl font-bold text-on-surface font-mono" id="s-orgs">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex items-center gap-2 mb-2"><span class="material-symbols-outlined text-green-500 text-lg">confirmation_number</span><span class="text-[10px] text-outline uppercase tracking-wider font-bold">Tickets</span></div>
+                    <div class="text-2xl font-bold text-on-surface font-mono" id="s-tickets">—</div>
+                    <div class="text-[10px] text-outline mt-1"><span id="s-tkt-open" class="text-secondary">0</span> open · <span id="s-tkt-done" class="text-green-400">0</span> done · <span id="s-tkt-fail" class="text-red-400">0</span> failed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex items-center gap-2 mb-2"><span class="material-symbols-outlined text-yellow-400 text-lg">sensors</span><span class="text-[10px] text-outline uppercase tracking-wider font-bold">Live SSE</span></div>
+                    <div class="text-2xl font-bold text-secondary font-mono" id="s-sse">—</div>
+                    <div class="text-[10px] text-outline mt-1">active streams</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="stat-card">
+                    <div class="flex items-center gap-2 mb-3"><span class="material-symbols-outlined text-primary text-lg">analytics</span><span class="text-xs font-bold text-on-surface">Analyses & Shipments</span></div>
+                    <div class="flex gap-6">
+                        <div><div class="text-xl font-bold font-mono text-on-surface" id="s-shipments">—</div><div class="text-[10px] text-outline">Total Shipments</div></div>
+                        <div><div class="text-xl font-bold font-mono text-primary" id="s-analyses">—</div><div class="text-[10px] text-outline">Risk Assessments</div></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex items-center gap-2 mb-3"><span class="material-symbols-outlined text-secondary text-lg">schedule</span><span class="text-xs font-bold text-on-surface">Quick Actions</span></div>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="btn-sm btn-primary" onclick="switchAdminTab('users',document.getElementById('tab-users'))">Manage Users</button>
+                        <button class="btn-sm btn-primary" onclick="switchAdminTab('tickets',document.getElementById('tab-tickets'))">View Tickets</button>
+                        <button class="btn-sm" onclick="loadHealth()">Refresh Health</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════ USERS TAB ════════ -->
+        <div class="admin-pane hidden" id="pane-users">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-sm font-bold text-on-surface">User Management</h2>
+                    <span class="text-[10px] font-mono text-outline" id="user-count-label">0 users</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="user-search" placeholder="Search users..." class="bg-surface-container-highest border-none rounded-lg py-2 px-3 text-xs text-on-surface placeholder:text-outline focus:ring-1 focus:ring-secondary/30 w-48"/>
+                    <button class="btn-sm btn-primary" onclick="showCreateUserModal()">+ Add User</button>
+                    <button class="btn-sm" onclick="loadUsers()">↻ Refresh</button>
+                </div>
+            </div>
+            <div class="rounded-xl border border-white/5 overflow-hidden" style="background:rgba(24,25,36,0.4);">
+                <div class="overflow-x-auto">
+                    <table class="tbl" id="users-table">
+                        <thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Organisation</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+                        <tbody id="users-tbody"><tr><td colspan="7" class="text-center text-outline py-8">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════ TICKETS TAB ════════ -->
+        <div class="admin-pane hidden" id="pane-tickets">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-sm font-bold text-on-surface">Ticket Monitor</h2>
+                    <span class="text-[10px] font-mono text-outline" id="ticket-count-label">0 tickets</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <select id="ticket-status-filter" class="bg-surface-container-highest border-none rounded-lg py-2 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30" onchange="loadTickets()">
+                        <option value="">All Status</option>
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                    <button class="btn-sm" onclick="loadTickets()">↻ Refresh</button>
+                </div>
+            </div>
+            <div class="rounded-xl border border-white/5 overflow-hidden" style="background:rgba(24,25,36,0.4);">
+                <div class="overflow-x-auto">
+                    <table class="tbl" id="tickets-table">
+                        <thead><tr><th>Ticket</th><th>Title</th><th>Route</th><th>Mode</th><th>Org</th><th>Priority</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+                        <tbody id="tickets-tbody"><tr><td colspan="9" class="text-center text-outline py-8">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="flex items-center justify-between mt-3" id="tickets-pagination"></div>
+        </div>
+
+        <!-- ════════ LOGS TAB ════════ -->
+        <div class="admin-pane hidden" id="pane-logs">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-sm font-bold text-on-surface">Agent Execution Logs</h2>
+                    <span class="text-[10px] font-mono text-outline" id="log-count-label">0 entries</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <select id="log-agent-filter" class="bg-surface-container-highest border-none rounded-lg py-2 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30" onchange="loadLogs()">
+                        <option value="">All Agents</option>
+                        <option value="intake">Intake</option>
+                        <option value="weather">Weather</option>
+                        <option value="news">News</option>
+                        <option value="historical">Historical</option>
+                        <option value="brain">Brain</option>
+                        <option value="graph">Graph</option>
+                    </select>
+                    <select id="log-status-filter" class="bg-surface-container-highest border-none rounded-lg py-2 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30" onchange="loadLogs()">
+                        <option value="">All Status</option>
+                        <option value="started">Started</option>
+                        <option value="success">Success</option>
+                        <option value="failed">Failed</option>
+                        <option value="skipped">Skipped</option>
+                    </select>
+                    <button class="btn-sm" onclick="loadLogs()">↻ Refresh</button>
+                </div>
+            </div>
+            <div class="rounded-xl border border-white/5 overflow-hidden" style="background:rgba(24,25,36,0.4);">
+                <div class="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                    <table class="tbl" id="logs-table">
+                        <thead class="sticky top-0" style="background:#181924;"><tr><th>ID</th><th>Session</th><th>Agent</th><th>Action</th><th>Status</th><th>Duration</th><th>Time</th></tr></thead>
+                        <tbody id="logs-tbody"><tr><td colspan="7" class="text-center text-outline py-8">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="flex items-center justify-between mt-3" id="logs-pagination"></div>
+        </div>
+
+        <!-- ════════ HEALTH TAB ════════ -->
+        <div class="admin-pane hidden" id="pane-health">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-sm font-bold text-on-surface">System Health</h2>
+                <button class="btn-sm btn-primary" onclick="loadHealth()">↻ Refresh</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="health-cards">
+                <div class="stat-card"><div class="text-center text-outline py-4">Loading health data...</div></div>
+            </div>
+            <div class="stat-card">
+                <h3 class="text-xs font-bold text-on-surface mb-3">Database Table Sizes</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="health-tables"></div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- CREATE USER MODAL                              -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-bg hidden" id="create-user-modal" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="glass rounded-xl border border-white/10 p-6 w-full max-w-md fade-in" onclick="event.stopPropagation()">
+        <h3 class="text-sm font-bold text-on-surface mb-4">Create New User</h3>
+        <form id="create-user-form" class="space-y-3">
+            <div><label class="text-[10px] text-outline uppercase tracking-wider font-bold block mb-1">Organisation ID</label>
+                <input type="number" id="cu-org" class="w-full bg-surface-container-highest border-none rounded-lg py-2.5 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30" value="1" required/></div>
+            <div><label class="text-[10px] text-outline uppercase tracking-wider font-bold block mb-1">Display Name</label>
+                <input type="text" id="cu-name" class="w-full bg-surface-container-highest border-none rounded-lg py-2.5 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30" required/></div>
+            <div><label class="text-[10px] text-outline uppercase tracking-wider font-bold block mb-1">Email</label>
+                <input type="email" id="cu-email" class="w-full bg-surface-container-highest border-none rounded-lg py-2.5 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30" required/></div>
+            <div><label class="text-[10px] text-outline uppercase tracking-wider font-bold block mb-1">Password (min 8 chars)</label>
+                <input type="password" id="cu-pass" class="w-full bg-surface-container-highest border-none rounded-lg py-2.5 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30" minlength="8" required/></div>
+            <div><label class="text-[10px] text-outline uppercase tracking-wider font-bold block mb-1">Role</label>
+                <select id="cu-role" class="w-full bg-surface-container-highest border-none rounded-lg py-2.5 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30">
+                    <option value="user">User</option><option value="admin">Admin</option><option value="superadmin">Super Admin</option>
+                </select></div>
+            <div class="flex gap-2 pt-2">
+                <button type="submit" class="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-secondary to-primary text-on-primary-fixed font-bold text-xs transition-all hover:brightness-110">Create User</button>
+                <button type="button" class="py-2.5 px-4 rounded-lg text-xs font-bold text-outline border border-white/10 hover:bg-white/5" onclick="document.getElementById('create-user-modal').classList.add('hidden')">Cancel</button>
+            </div>
+        </form>
+        <div class="hidden mt-3 text-xs text-error" id="cu-error"></div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- EDIT USER MODAL                                -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-bg hidden" id="edit-user-modal" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="glass rounded-xl border border-white/10 p-6 w-full max-w-md fade-in" onclick="event.stopPropagation()">
+        <h3 class="text-sm font-bold text-on-surface mb-4">Edit User <span class="font-mono text-secondary" id="eu-id-label"></span></h3>
+        <form id="edit-user-form" class="space-y-3">
+            <input type="hidden" id="eu-id"/>
+            <div><label class="text-[10px] text-outline uppercase tracking-wider font-bold block mb-1">Display Name</label>
+                <input type="text" id="eu-name" class="w-full bg-surface-container-highest border-none rounded-lg py-2.5 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30" required/></div>
+            <div><label class="text-[10px] text-outline uppercase tracking-wider font-bold block mb-1">Organisation ID</label>
+                <input type="number" id="eu-org" class="w-full bg-surface-container-highest border-none rounded-lg py-2.5 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30"/></div>
+            <div><label class="text-[10px] text-outline uppercase tracking-wider font-bold block mb-1">Role</label>
+                <select id="eu-role" class="w-full bg-surface-container-highest border-none rounded-lg py-2.5 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30">
+                    <option value="user">User</option><option value="admin">Admin</option><option value="superadmin">Super Admin</option>
+                </select></div>
+            <div><label class="text-[10px] text-outline uppercase tracking-wider font-bold block mb-1">Status</label>
+                <select id="eu-active" class="w-full bg-surface-container-highest border-none rounded-lg py-2.5 px-3 text-xs text-on-surface focus:ring-1 focus:ring-secondary/30">
+                    <option value="1">Active</option><option value="0">Inactive</option>
+                </select></div>
+            <div class="flex gap-2 pt-2">
+                <button type="submit" class="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-secondary to-primary text-on-primary-fixed font-bold text-xs transition-all hover:brightness-110">Save Changes</button>
+                <button type="button" class="py-2.5 px-4 rounded-lg text-xs font-bold text-outline border border-white/10 hover:bg-white/5" onclick="document.getElementById('edit-user-modal').classList.add('hidden')">Cancel</button>
+            </div>
+        </form>
+        <div class="hidden mt-3 text-xs text-error" id="eu-error"></div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- TICKET DETAIL MODAL                            -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-bg hidden" id="ticket-detail-modal" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="glass rounded-xl border border-white/10 p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto fade-in" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold text-on-surface" id="td-title">Ticket Detail</h3>
+            <button class="btn-sm" onclick="document.getElementById('ticket-detail-modal').classList.add('hidden')">✕ Close</button>
+        </div>
+        <div id="td-content" class="text-xs text-on-surface-variant space-y-3">Loading...</div>
+    </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// AUTH CHECK
+// ══════════════════════════════════════════════════════════
+(async function() {
+    try {
+        const r = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!r.ok) { window.location.href = '/login'; return; }
+        const me = await r.json();
+        if (me.role !== 'superadmin') {
+            alert('Access denied: Super Admin role required.');
+            window.location.href = '/';
+            return;
+        }
+        document.getElementById('admin-user-name').textContent = me.display_name;
+    } catch(e) {
+        window.location.href = '/login';
+    }
+})();
+
+document.getElementById('admin-logout-btn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
+    window.location.href = '/login';
+});
+
+// ══════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════════════════════
+function switchAdminTab(tabId, btn) {
+    document.querySelectorAll('.admin-pane').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    const pane = document.getElementById('pane-' + tabId);
+    if (pane) { pane.classList.remove('hidden'); }
+    if (btn) btn.classList.add('active');
+    // Load data for the active tab
+    if (tabId === 'overview') loadStats();
+    if (tabId === 'users') loadUsers();
+    if (tabId === 'tickets') loadTickets();
+    if (tabId === 'logs') loadLogs();
+    if (tabId === 'health') loadHealth();
+}
+
+// ══════════════════════════════════════════════════════════
+// OVERVIEW — STATS
+// ══════════════════════════════════════════════════════════
+async function loadStats() {
+    try {
+        const r = await fetch('/api/admin/stats', { credentials:'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        document.getElementById('s-users').textContent = d.users || 0;
+        document.getElementById('s-active-users').textContent = d.active_users || 0;
+        document.getElementById('s-orgs').textContent = d.organisations || 0;
+        document.getElementById('s-tickets').textContent = d.tickets_total || 0;
+        document.getElementById('s-tkt-open').textContent = d.tickets_open || 0;
+        document.getElementById('s-tkt-done').textContent = d.tickets_completed || 0;
+        document.getElementById('s-tkt-fail').textContent = d.tickets_failed || 0;
+        document.getElementById('s-sse').textContent = d.active_sse || 0;
+        document.getElementById('s-shipments').textContent = d.shipments || 0;
+        document.getElementById('s-analyses').textContent = d.analyses || 0;
+    } catch(e) { console.error('[admin] stats:', e); }
+}
+
+// ══════════════════════════════════════════════════════════
+// USERS
+// ══════════════════════════════════════════════════════════
+let _allUsers = [];
+async function loadUsers() {
+    try {
+        const r = await fetch('/api/admin/users', { credentials:'include' });
+        if (!r.ok) return;
+        _allUsers = await r.json();
+        document.getElementById('user-count-label').textContent = _allUsers.length + ' users';
+        renderUsers(_allUsers);
+    } catch(e) { console.error('[admin] users:', e); }
+}
+
+function renderUsers(users) {
+    const tbody = document.getElementById('users-tbody');
+    if (!users.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-outline py-6">No users found</td></tr>'; return; }
+    tbody.innerHTML = users.map(u => `
+        <tr>
+            <td class="font-mono text-outline">${u.id}</td>
+            <td class="text-on-surface font-semibold">${esc(u.display_name)}</td>
+            <td><span class="pill pill-${u.role}">${u.role}</span></td>
+            <td>${esc(u.org_name || '—')} <span class="text-outline text-[10px]">#${u.org_id}</span></td>
+            <td><span class="pill ${u.is_active ? 'pill-active' : 'pill-inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+            <td class="text-[10px] text-outline font-mono">${u.created_at || '—'}</td>
+            <td>
+                <div class="flex gap-1 flex-wrap">
+                    <button class="btn-sm btn-primary" onclick="showEditUserModal(${u.id})">Edit</button>
+                    <button class="btn-sm" onclick="toggleUserActive(${u.id}, ${u.is_active ? 0 : 1})">${u.is_active ? 'Deactivate' : 'Activate'}</button>
+                    <button class="btn-sm btn-danger" onclick="deleteUser(${u.id}, '${esc(u.display_name).replace(/'/g, "\\'")}')">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+document.getElementById('user-search').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    const filtered = _allUsers.filter(u =>
+        u.display_name.toLowerCase().includes(q) ||
+        (u.org_name || '').toLowerCase().includes(q) ||
+        u.role.includes(q) ||
+        String(u.id).includes(q)
+    );
+    renderUsers(filtered);
+});
+
+async function toggleUserActive(userId, newActive) {
+    try {
+        const r = await fetch(`/api/admin/users/${userId}`, {
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            credentials:'include', body: JSON.stringify({ is_active: !!newActive })
+        });
+        if (r.ok) loadUsers(); else { const d = await r.json(); alert(d.error); }
+    } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function changeRole(userId, newRole) {
+    try {
+        const r = await fetch(`/api/admin/users/${userId}`, {
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            credentials:'include', body: JSON.stringify({ role: newRole })
+        });
+        if (r.ok) loadUsers(); else { const d = await r.json(); alert(d.error); }
+    } catch(e) { alert('Error: ' + e.message); }
+}
+
+function showCreateUserModal() {
+    document.getElementById('create-user-modal').classList.remove('hidden');
+    document.getElementById('cu-error').classList.add('hidden');
+}
+
+document.getElementById('create-user-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('cu-error');
+    errEl.classList.add('hidden');
+    try {
+        const r = await fetch('/api/admin/users', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            credentials:'include',
+            body: JSON.stringify({
+                org_id: parseInt(document.getElementById('cu-org').value),
+                display_name: document.getElementById('cu-name').value.trim(),
+                email: document.getElementById('cu-email').value.trim(),
+                password: document.getElementById('cu-pass').value,
+                role: document.getElementById('cu-role').value
+            })
+        });
+        const d = await r.json();
+        if (r.ok) {
+            document.getElementById('create-user-modal').classList.add('hidden');
+            this.reset();
+            loadUsers();
+        } else {
+            errEl.textContent = d.error || 'Creation failed';
+            errEl.classList.remove('hidden');
+        }
+    } catch(err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+    }
+});
+
+// ── Edit User ──
+function showEditUserModal(userId) {
+    const user = _allUsers.find(u => u.id === userId);
+    if (!user) return;
+    document.getElementById('eu-id').value = user.id;
+    document.getElementById('eu-id-label').textContent = '#' + user.id;
+    document.getElementById('eu-name').value = user.display_name;
+    document.getElementById('eu-org').value = user.org_id;
+    document.getElementById('eu-role').value = user.role;
+    document.getElementById('eu-active').value = user.is_active ? '1' : '0';
+    document.getElementById('eu-error').classList.add('hidden');
+    document.getElementById('edit-user-modal').classList.remove('hidden');
+}
+
+document.getElementById('edit-user-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('eu-error');
+    errEl.classList.add('hidden');
+    const userId = document.getElementById('eu-id').value;
+    try {
+        const r = await fetch(`/api/admin/users/${userId}`, {
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            credentials:'include',
+            body: JSON.stringify({
+                display_name: document.getElementById('eu-name').value.trim(),
+                org_id: parseInt(document.getElementById('eu-org').value),
+                role: document.getElementById('eu-role').value,
+                is_active: document.getElementById('eu-active').value === '1'
+            })
+        });
+        if (r.ok) {
+            document.getElementById('edit-user-modal').classList.add('hidden');
+            loadUsers();
+        } else {
+            const d = await r.json();
+            errEl.textContent = d.error || 'Update failed';
+            errEl.classList.remove('hidden');
+        }
+    } catch(err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+    }
+});
+
+// ── Delete User ──
+async function deleteUser(userId, name) {
+    if (!confirm(`Deactivate user "${name}" (ID: ${userId})? This will disable their account.`)) return;
+    try {
+        const r = await fetch(`/api/admin/users/${userId}`, { method:'DELETE', credentials:'include' });
+        if (r.ok) loadUsers();
+        else { const d = await r.json(); alert(d.error); }
+    } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+// TICKETS
+// ══════════════════════════════════════════════════════════
+let _ticketPage = 1;
+async function loadTickets(page) {
+    _ticketPage = page || 1;
+    const status = document.getElementById('ticket-status-filter').value;
+    try {
+        let url = `/api/admin/tickets?page=${_ticketPage}&per_page=25`;
+        if (status) url += `&status=${status}`;
+        const r = await fetch(url, { credentials:'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        document.getElementById('ticket-count-label').textContent = d.total + ' tickets';
+        const tbody = document.getElementById('tickets-tbody');
+        if (!d.tickets.length) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-outline py-6">No tickets found</td></tr>';
+        } else {
+            tbody.innerHTML = d.tickets.map(t => {
+                const modeIcon = t.transport_mode === 'air' ? '✈️' : t.transport_mode === 'sea' ? '🚢' : '🚛';
+                return `<tr>
+                    <td class="font-mono text-secondary text-[11px] font-bold">${t.ticket_id}</td>
+                    <td class="text-on-surface max-w-[180px] truncate">${esc(t.title)}</td>
+                    <td class="text-[10px]">${esc(t.origin||'?')} → ${esc(t.destination||'?')}</td>
+                    <td>${modeIcon} ${t.transport_mode || '—'}</td>
+                    <td class="text-[10px]">${esc(t.org_name||'—')}</td>
+                    <td><span class="pill pill-${t.priority||'medium'}" style="${t.priority==='critical'?'background:rgba(127,29,29,0.2);color:#ef4444':t.priority==='high'?'background:rgba(234,88,12,0.15);color:#f97316':''}">${t.priority||'—'}</span></td>
+                    <td><span class="pill pill-${t.status}">${t.status}</span></td>
+                    <td class="text-[10px] text-outline font-mono">${t.created_at||'—'}</td>
+                    <td>
+                        <div class="flex gap-1">
+                            <button class="btn-sm btn-primary" onclick="viewTicketDetail('${t.ticket_id}')">View</button>
+                            <a class="btn-sm" href="/analysis?ticket=${encodeURIComponent(t.ticket_id)}&uuid=${encodeURIComponent(t.shipment_uuid||'')}" target="_blank" style="text-decoration:none;">↗ Open</a>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+        // Pagination
+        const pagDiv = document.getElementById('tickets-pagination');
+        if (d.pages > 1) {
+            let html = `<span class="text-[10px] text-outline">Page ${d.page}/${d.pages} (${d.total} total)</span><div class="flex gap-1">`;
+            if (d.page > 1) html += `<button class="btn-sm" onclick="loadTickets(${d.page-1})">← Prev</button>`;
+            if (d.page < d.pages) html += `<button class="btn-sm" onclick="loadTickets(${d.page+1})">Next →</button>`;
+            html += '</div>';
+            pagDiv.innerHTML = html;
+        } else { pagDiv.innerHTML = ''; }
+    } catch(e) { console.error('[admin] tickets:', e); }
+}
+
+async function viewTicketDetail(ticketId) {
+    document.getElementById('ticket-detail-modal').classList.remove('hidden');
+    document.getElementById('td-title').textContent = ticketId;
+    document.getElementById('td-content').innerHTML = '<div class="text-center text-outline py-4">Loading...</div>';
+    try {
+        const r = await fetch(`/api/admin/tickets/${ticketId}`, { credentials:'include' });
+        if (!r.ok) { document.getElementById('td-content').innerHTML = '<div class="text-error">Failed to load</div>'; return; }
+        const t = await r.json();
+        const modeIcon = t.transport_mode === 'air' ? '✈️' : t.transport_mode === 'sea' ? '🚢' : '🚛';
+        let resultHtml = '';
+        if (t.result_json) {
+            try {
+                const res = typeof t.result_json === 'string' ? JSON.parse(t.result_json) : t.result_json;
+                resultHtml = `<div class="mt-3 p-3 rounded-lg" style="background:rgba(0,0,0,0.3);">
+                    <div class="text-[10px] text-outline uppercase font-bold mb-2">Analysis Result</div>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div><span class="text-outline">Risk Score:</span> <span class="font-bold text-on-surface">${res.risk_score ?? '—'}/100</span></div>
+                        <div><span class="text-outline">Risk Level:</span> <span class="font-bold" style="color:${res.risk_level==='HIGH'||res.risk_level==='CRITICAL'?'#ef4444':res.risk_level==='MEDIUM'?'#fbbf24':'#22c55e'}">${res.risk_level || '—'}</span></div>
+                        <div><span class="text-outline">Delay Prob:</span> <span class="font-bold text-on-surface">${res.delay_probability ?? '—'}%</span></div>
+                        <div><span class="text-outline">Confidence:</span> <span class="font-bold text-on-surface">${res.confidence_score ?? '—'}</span></div>
+                    </div>
+                    ${res.llm_reasoning ? `<div class="text-[11px] text-on-surface-variant leading-relaxed mt-2 p-2 rounded" style="background:rgba(255,255,255,0.02)">${esc(res.llm_reasoning).substring(0,600)}${res.llm_reasoning.length>600?'...':''}</div>` : ''}
+                </div>`;
+            } catch(_) { resultHtml = '<div class="text-outline text-[10px]">Result data present (parse error)</div>'; }
+        }
+        document.getElementById('td-content').innerHTML = `
+            <div class="grid grid-cols-2 gap-3">
+                <div><span class="text-outline">Ticket:</span> <span class="font-mono font-bold text-secondary">${t.ticket_id}</span></div>
+                <div><span class="text-outline">UUID:</span> <span class="font-mono text-[10px]">${t.shipment_uuid}</span></div>
+                <div><span class="text-outline">Title:</span> <span class="text-on-surface">${esc(t.title)}</span></div>
+                <div><span class="text-outline">Mode:</span> ${modeIcon} ${t.transport_mode}</div>
+                <div><span class="text-outline">Route:</span> ${esc(t.origin||'?')} → ${esc(t.destination||'?')}</div>
+                <div><span class="text-outline">Cargo:</span> ${t.cargo_type||'—'}</div>
+                <div><span class="text-outline">Priority:</span> <span class="pill pill-${t.priority}">${t.priority}</span></div>
+                <div><span class="text-outline">Status:</span> <span class="pill pill-${t.status}">${t.status}</span></div>
+                <div><span class="text-outline">Org:</span> ${t.org_name||'—'} (#${t.org_id})</div>
+                <div><span class="text-outline">ETA:</span> ${t.eta_days||'—'} days</div>
+                <div><span class="text-outline">Weight:</span> ${t.weight_kg||'—'} kg</div>
+                <div><span class="text-outline">Budget:</span> $${t.budget_usd||'—'}</div>
+                <div><span class="text-outline">Created:</span> <span class="font-mono text-[10px]">${t.created_at||'—'}</span></div>
+                <div><span class="text-outline">Updated:</span> <span class="font-mono text-[10px]">${t.updated_at||'—'}</span></div>
+            </div>
+            ${resultHtml}
+        `;
+    } catch(e) { document.getElementById('td-content').innerHTML = '<div class="text-error">Error: ' + e.message + '</div>'; }
+}
+
+// ══════════════════════════════════════════════════════════
+// LOGS
+// ══════════════════════════════════════════════════════════
+let _logPage = 1;
+async function loadLogs(page) {
+    _logPage = page || 1;
+    const agent = document.getElementById('log-agent-filter').value;
+    const status = document.getElementById('log-status-filter').value;
+    try {
+        let url = `/api/admin/logs?page=${_logPage}&per_page=100`;
+        if (agent) url += `&agent=${agent}`;
+        if (status) url += `&status=${status}`;
+        const r = await fetch(url, { credentials:'include' });
+        if (!r.ok) return;
+        const d = await r.json();
+        document.getElementById('log-count-label').textContent = d.total + ' entries';
+        const tbody = document.getElementById('logs-tbody');
+        if (!d.logs.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-outline py-6">No logs found</td></tr>';
+        } else {
+            tbody.innerHTML = d.logs.map(l => `
+                <tr>
+                    <td class="font-mono text-outline text-[10px]">${l.id}</td>
+                    <td class="font-mono text-[10px] text-primary cursor-pointer" title="${l.session_id}" onclick="filterLogsBySession('${l.session_id}')">${l.session_id ? l.session_id.substring(0,8) + '…' : '—'}</td>
+                    <td><span class="pill" style="background:rgba(189,157,255,0.1);color:#bd9dff;">${l.agent_name}</span></td>
+                    <td class="max-w-[300px] truncate">${esc(l.action)}</td>
+                    <td><span class="log-${l.status} font-bold text-[10px] uppercase">${l.status}</span></td>
+                    <td class="font-mono text-[10px] text-outline">${l.duration_ms ? l.duration_ms + 'ms' : '—'}</td>
+                    <td class="text-[10px] text-outline font-mono">${l.created_at||'—'}</td>
+                </tr>
+            `).join('');
+        }
+        // Pagination
+        const pagDiv = document.getElementById('logs-pagination');
+        if (d.pages > 1) {
+            let html = `<span class="text-[10px] text-outline">Page ${d.page}/${d.pages}</span><div class="flex gap-1">`;
+            if (d.page > 1) html += `<button class="btn-sm" onclick="loadLogs(${d.page-1})">← Prev</button>`;
+            if (d.page < d.pages) html += `<button class="btn-sm" onclick="loadLogs(${d.page+1})">Next →</button>`;
+            html += '</div>';
+            pagDiv.innerHTML = html;
+        } else { pagDiv.innerHTML = ''; }
+    } catch(e) { console.error('[admin] logs:', e); }
+}
+
+function filterLogsBySession(sid) {
+    // Quick filter to show all logs for a session
+    document.getElementById('log-agent-filter').value = '';
+    document.getElementById('log-status-filter').value = '';
+    // Navigate with session filter
+    _logPage = 1;
+    fetch(`/api/admin/logs?session_id=${sid}&per_page=200`, { credentials:'include' })
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('log-count-label').textContent = d.total + ` entries (session: ${sid.substring(0,8)}…)`;
+            const tbody = document.getElementById('logs-tbody');
+            tbody.innerHTML = d.logs.map(l => `
+                <tr>
+                    <td class="font-mono text-outline text-[10px]">${l.id}</td>
+                    <td class="font-mono text-[10px] text-primary">${l.session_id ? l.session_id.substring(0,8) + '…' : '—'}</td>
+                    <td><span class="pill" style="background:rgba(189,157,255,0.1);color:#bd9dff;">${l.agent_name}</span></td>
+                    <td class="max-w-[300px] truncate">${esc(l.action)}</td>
+                    <td><span class="log-${l.status} font-bold text-[10px] uppercase">${l.status}</span></td>
+                    <td class="font-mono text-[10px] text-outline">${l.duration_ms ? l.duration_ms + 'ms' : '—'}</td>
+                    <td class="text-[10px] text-outline font-mono">${l.created_at||'—'}</td>
+                </tr>
+            `).join('');
+        });
+}
+
+// ══════════════════════════════════════════════════════════
+// HEALTH
+// ══════════════════════════════════════════════════════════
+async function loadHealth() {
+    try {
+        const r = await fetch('/api/admin/health', { credentials:'include' });
+        if (!r.ok) return;
+        const h = await r.json();
+        const cards = document.getElementById('health-cards');
+        const c = h.components || {};
+        const db = c.database || {};
+        const sse = c.sse || {};
+        const sys = c.system || {};
+
+        cards.innerHTML = `
+            <div class="stat-card">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-3 h-3 rounded-full ${db.status==='up'?'bg-green-500 pulse-glow':'bg-red-500'}"></span>
+                    <span class="text-xs font-bold text-on-surface">Database</span>
+                </div>
+                <div class="text-[10px] text-outline space-y-1">
+                    <div>Status: <span class="${db.status==='up'?'text-green-400':'text-red-400'} font-bold">${db.status?.toUpperCase()}</span></div>
+                    <div>Type: ${db.type || 'MySQL'}</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-secondary text-lg">stream</span>
+                    <span class="text-xs font-bold text-on-surface">SSE Streams</span>
+                </div>
+                <div class="text-[10px] text-outline space-y-1">
+                    <div>Total Sessions: <span class="text-on-surface font-bold">${sse.total_sessions ?? '—'}</span></div>
+                    <div>Active: <span class="text-secondary font-bold">${sse.active_sessions ?? '—'}</span></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-primary text-lg">memory</span>
+                    <span class="text-xs font-bold text-on-surface">Process</span>
+                </div>
+                <div class="text-[10px] text-outline space-y-1">
+                    <div>Memory: <span class="text-on-surface font-bold">${sys.memory_mb ?? '—'} MB</span></div>
+                    <div>CPU: <span class="text-on-surface font-bold">${sys.cpu_percent ?? '—'}%</span></div>
+                    <div>Threads: <span class="text-on-surface font-bold">${sys.threads ?? '—'}</span></div>
+                    <div>Uptime: <span class="text-on-surface font-bold">${sys.uptime_seconds ? formatUptime(sys.uptime_seconds) : '—'}</span></div>
+                    <div>PID: <span class="font-mono">${sys.pid ?? '—'}</span></div>
+                </div>
+            </div>
+        `;
+
+        // Table sizes
+        const tables = c.tables || {};
+        const tablesDiv = document.getElementById('health-tables');
+        tablesDiv.innerHTML = Object.entries(tables).map(([name, count]) => `
+            <div class="px-3 py-2 rounded-lg" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04)">
+                <div class="text-[10px] text-outline font-mono">${name}</div>
+                <div class="text-sm font-bold text-on-surface font-mono">${typeof count === 'number' ? count.toLocaleString() : count}</div>
+            </div>
+        `).join('');
+    } catch(e) { console.error('[admin] health:', e); }
+}
+
+function formatUptime(seconds) {
+    if (seconds < 60) return seconds + 's';
+    if (seconds < 3600) return Math.floor(seconds/60) + 'm ' + (seconds%60) + 's';
+    const h = Math.floor(seconds/3600);
+    const m = Math.floor((seconds%3600)/60);
+    return h + 'h ' + m + 'm';
+}
+
+// ══════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════
+function esc(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT — Load overview on page load
+// ══════════════════════════════════════════════════════════
+setTimeout(() => loadStats(), 500);
+</script>
+</body></html>

@@ -353,6 +353,9 @@ class AgentGraph:
         final_result["vessel_data"] = state.get("vessel")
         final_result["port_intel_data"] = state.get("port_intel")
         final_result["geopolitical_data"] = state.get("geopolitical")
+        final_result["news"] = state.get("news")
+        final_result["weather"] = state.get("weather")
+        final_result["historical"] = state.get("historical")
 
         self._emit("agent_log", {
             "agent": "graph",

@@ -251,10 +251,10 @@
                 const icon  = document.getElementById('role-badge-icon');
                 const label = document.getElementById('role-badge-label');
                 if (badge && icon && label) {
-                    icon.textContent  = userRole === 'admin' ? 'shield_person' : 'person';
-                    icon.style.color  = userRole === 'admin' ? '#bd9dff' : '#00d9ff';
+                    icon.textContent  = userRole === 'superadmin' ? 'shield_person' : userRole === 'admin' ? 'shield_person' : 'person';
+                    icon.style.color  = userRole === 'superadmin' ? '#00d9ff' : userRole === 'admin' ? '#bd9dff' : '#00d9ff';
                     label.textContent = userRole.toUpperCase();
-                    label.style.color = userRole === 'admin' ? '#bd9dff' : '#00d9ff';
+                    label.style.color = userRole === 'superadmin' ? '#00d9ff' : userRole === 'admin' ? '#bd9dff' : '#00d9ff';
                     badge.classList.remove('hidden');
                 }
                 if (data.otp_required) {
@@ -263,7 +263,12 @@
                     sessionStorage.setItem('otp_user_id', uid);
                     window.location.href = '/otp?uid=' + uid;
                 } else {
-                    window.location.href = '/';
+                    // Role-based redirect
+                    if (userRole === 'superadmin') {
+                        window.location.href = '/admin';
+                    } else {
+                        window.location.href = '/';
+                    }
                 }
             } else {
                 errTxt.textContent = data.error || 'Login failed.';

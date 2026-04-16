@@ -50,6 +50,7 @@
             <a class="font-semibold tracking-tight text-white border-b-2 border-cyan-400 pb-1" href="/">Dashboard</a>
             <a class="font-semibold tracking-tight text-slate-400 hover:text-white transition-colors" href="/logs">Logs</a>
             <a class="font-semibold tracking-tight text-slate-400 hover:text-white transition-colors" href="/analysis">Analysis</a>
+            <a id="nav-admin-link" class="hidden font-semibold tracking-tight hover:text-white transition-colors" href="/admin" style="color:#00d9ff;">⚡ Admin</a>
         </nav>
     </div>
     <div class="flex items-center gap-4">
@@ -69,45 +70,8 @@
     </div>
 </header>
 
-<!-- SideNavBar -->
-<aside class="fixed left-0 top-0 h-full w-64 z-40 bg-[#12131D] flex flex-col pt-20 pb-6 border-r border-white/5 hidden lg:flex">
-    <div class="px-6 mb-8">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
-                <span class="material-symbols-outlined text-cyan-400" style="font-variation-settings: 'FILL' 1;">psychology</span>
-            </div>
-            <div>
-                <div class="text-lg font-bold text-white font-headline">Kinetic Intel</div>
-                <div class="text-[10px] uppercase tracking-widest text-cyan-400 font-bold">System Active</div>
-            </div>
-        </div>
-    </div>
-    <nav class="flex-1 space-y-1">
-        <a class="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-violet-600/20 to-transparent text-cyan-400 border-r-2 border-cyan-400" href="/">
-            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_shipping</span><span class="text-sm font-medium">Fleet</span>
-        </a>
-        <a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-white/5 hover:text-slate-200 transition-all hover:translate-x-1" href="/logs">
-            <span class="material-symbols-outlined">psychology</span><span class="text-sm font-medium">Intelligence</span>
-        </a>
-        <a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-white/5 hover:text-slate-200 transition-all hover:translate-x-1" href="/analysis">
-            <span class="material-symbols-outlined">alt_route</span><span class="text-sm font-medium">Routes</span>
-        </a>
-        <a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-white/5 hover:text-slate-200 transition-all hover:translate-x-1" href="/logs">
-            <span class="material-symbols-outlined">inventory_2</span><span class="text-sm font-medium">Archive</span>
-        </a>
-    </nav>
-    <div class="px-4 mt-auto">
-        <a href="/analysis" class="w-full py-3 kinetic-gradient text-white font-bold rounded-lg shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2 no-underline text-sm mb-4">
-            <span class="material-symbols-outlined text-sm">alt_route</span> AgentRoute AI
-        </a>
-        <div class="pt-4 border-t border-white/5 space-y-1">
-            <a class="flex items-center gap-3 px-4 py-2 text-slate-500 text-xs hover:text-slate-200 transition-all no-underline" href="/logs"><span class="material-symbols-outlined text-lg">settings</span>Settings</a>
-        </div>
-    </div>
-</aside>
-
 <!-- Main Content -->
-<main class="lg:ml-64 pt-24 px-6 pb-12">
+<main class="pt-24 px-6 pb-12">
 <div class="max-w-7xl mx-auto">
 
     <!-- Welcome Banner -->
@@ -168,14 +132,23 @@
         <div class="col-span-12 lg:col-span-8 space-y-6">
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-bold font-headline flex items-center gap-2">
-                    <span class="material-symbols-outlined text-secondary">history</span> Recent Analyses
+                    <span class="material-symbols-outlined text-secondary">confirmation_number</span> My Simulations
                 </h2>
-                <a href="/analysis" class="text-xs font-bold text-secondary uppercase tracking-widest hover:text-primary transition-colors no-underline">+ New Analysis</a>
+                <a href="/analysis" class="text-xs font-bold text-secondary uppercase tracking-widest hover:text-primary transition-colors no-underline">+ New Ticket</a>
             </div>
+
+            <!-- Ticket filter pills -->
+            <div class="flex gap-2 flex-wrap" id="dash-ticket-filters">
+                <button onclick="dashFilterTickets('all',this)" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-secondary/20 text-secondary border border-secondary/30 active" id="dash-filter-all">All</button>
+                <button onclick="dashFilterTickets('completed',this)" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-surface-container text-outline border border-white/5 hover:border-secondary/30 hover:text-secondary transition-all">Completed</button>
+                <button onclick="dashFilterTickets('open',this)" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-surface-container text-outline border border-white/5 hover:border-secondary/30 hover:text-secondary transition-all">Open</button>
+                <button onclick="dashFilterTickets('in_progress',this)" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-surface-container text-outline border border-white/5 hover:border-secondary/30 hover:text-secondary transition-all">Running</button>
+            </div>
+
             <div class="space-y-3" id="recent-analyses">
                 <div class="glass-panel p-6 rounded-xl border border-white/5 text-center text-on-surface-variant">
-                    <span class="material-symbols-outlined text-4xl text-outline mb-2 block">inbox</span>
-                    <p class="text-sm">No analyses yet. <a href="/analysis" class="text-secondary font-bold">Launch your first analysis →</a></p>
+                    <span class="material-symbols-outlined text-4xl text-outline mb-2 block">confirmation_number</span>
+                    <p class="text-sm">No tickets yet. <a href="/analysis" class="text-secondary font-bold">Launch your first analysis →</a></p>
                 </div>
             </div>
 
@@ -334,16 +307,20 @@ async function loadCurrentUser() {
         const avatar = document.getElementById('user-chip-avatar');
         if (avatar) {
             avatar.textContent = (_currentUser.display_name||'?')[0].toUpperCase();
-            avatar.style.background = _currentUser.role === 'admin'
-                ? 'linear-gradient(135deg,#bd9dff,#7C3AED)'
-                : 'linear-gradient(135deg,#00d9ff,#006880)';
+            avatar.style.background = _currentUser.role === 'superadmin'
+                ? 'linear-gradient(135deg,#00d9ff,#7C3AED)'
+                : _currentUser.role === 'admin'
+                    ? 'linear-gradient(135deg,#bd9dff,#7C3AED)'
+                    : 'linear-gradient(135deg,#00d9ff,#006880)';
         }
         document.getElementById('user-chip-name').textContent = _currentUser.display_name || 'User';
         const orgEl = document.getElementById('user-chip-org');
         if (orgEl) {
-            const roleTag = _currentUser.role === 'admin'
-                ? '<span style="color:#bd9dff;font-size:9px;font-weight:700;margin-left:4px;">ADMIN</span>'
-                : '<span style="color:#00d9ff;font-size:9px;font-weight:700;margin-left:4px;">USER</span>';
+            const roleTag = _currentUser.role === 'superadmin'
+                ? '<span style="color:#00d9ff;font-size:9px;font-weight:700;margin-left:4px;">⚡ SUPERADMIN</span>'
+                : _currentUser.role === 'admin'
+                    ? '<span style="color:#bd9dff;font-size:9px;font-weight:700;margin-left:4px;">ADMIN</span>'
+                    : '<span style="color:#00d9ff;font-size:9px;font-weight:700;margin-left:4px;">USER</span>';
             orgEl.innerHTML = '🏢 ' + (_currentUser.org_name || '—') + roleTag;
         }
         document.getElementById('welcome-name').textContent = _currentUser.display_name || 'Commander';
@@ -353,10 +330,99 @@ async function loadCurrentUser() {
             await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
             window.location.href = '/login';
         });
-        loadHistory();
+        loadTickets();
         loadApprovedOrgs();
-        if (_currentUser.role === 'admin') loadPendingRequests();
+        if (_currentUser.role === 'admin' || _currentUser.role === 'superadmin') loadPendingRequests();
+        // Show admin link + auto-redirect superadmins to /admin
+        if (_currentUser.role === 'superadmin') {
+            const adminLink = document.getElementById('nav-admin-link');
+            if (adminLink) adminLink.classList.remove('hidden');
+            window.location.href = '/admin';
+            return;
+        }
     } catch(e) { console.warn('Auth error:', e); }
+}
+
+let _dashTickets = [];
+let _dashFilter  = 'all';
+
+async function loadTickets() {
+    try {
+        const r = await fetch('/api/tickets', { credentials: 'include' });
+        if (!r.ok) { await loadHistory(); return; }
+        const data = await r.json();
+        _dashTickets = data.tickets || [];
+        document.getElementById('stat-total').textContent = _dashTickets.length;
+        _renderDashTickets();
+    } catch(e) { console.error('Tickets load failed:', e); await loadHistory(); }
+}
+
+function _renderDashTickets() {
+    const container = document.getElementById('recent-analyses');
+    const filtered = _dashFilter === 'all' ? _dashTickets : _dashTickets.filter(t => t.status === _dashFilter);
+    if (!filtered.length) {
+        const label = _dashFilter === 'all' ? '' : _dashFilter + ' ';
+        container.innerHTML = `<div class="glass-panel p-6 rounded-xl border border-white/5 text-center text-on-surface-variant">
+            <span class="material-symbols-outlined text-4xl text-outline mb-2 block">confirmation_number</span>
+            <p class="text-sm">No ${label}tickets yet. <a href="/analysis" class="text-secondary font-bold">Launch your first analysis &rarr;</a></p>
+        </div>`;
+        return;
+    }
+    const modeIcon = { road:'🚗', sea:'🚢', air:'✈️' };
+    const statusCls = {
+        open:        'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+        in_progress: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        completed:   'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        failed:      'bg-red-500/10 text-red-400 border-red-500/20',
+        closed:      'bg-slate-500/10 text-slate-400 border-slate-500/20',
+    };
+    const priorityDot = { low:'#4ade80', medium:'#fde68a', high:'#f97316', critical:'#ef4444' };
+    container.innerHTML = filtered.slice(0, 10).map(t => {
+        const hasThreat   = !!t.threat_json;
+        const hasReroutes = !!t.reroute_json;
+        const sc = statusCls[t.status] || statusCls.open;
+        const pd = priorityDot[t.priority] || '#aaa';
+        const url = `/analysis?uuid=${encodeURIComponent(t.shipment_uuid)}&ticket=${encodeURIComponent(t.ticket_id)}`;
+        return `<div class="glass-panel p-4 rounded-xl border border-white/5 hover:bg-surface-bright/30 hover:border-secondary/20 hover:translate-y-[-1px] transition-all cursor-pointer group" onclick="window.location.href='${url}'">
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-3 flex-1 min-w-0">
+                    <div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center flex-shrink-0 text-lg">${modeIcon[t.transport_mode] || '📦'}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span class="text-[10px] font-mono font-bold text-primary">${t.ticket_id}</span>
+                            <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:${pd}"></span>
+                            <span class="text-[9px] text-outline uppercase tracking-wide">${t.priority || 'medium'}</span>
+                        </div>
+                        <div class="text-sm font-bold text-white truncate group-hover:text-secondary transition-colors">${t.title || t.shipment_uuid}</div>
+                        <div class="text-[10px] text-outline mt-0.5">${t.origin || '?'} &rarr; ${t.destination || '?'} &middot; ${(t.transport_mode || '?').toUpperCase()} &middot; ${t.cargo_type || '?'}</div>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <span class="text-[9px] font-mono text-outline">${t.shipment_uuid ? t.shipment_uuid.substring(0,18) + '&hellip;' : '&mdash;'}</span>
+                            ${hasThreat   ? '<span class="px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-900/30 text-red-400 border border-red-500/20">⚡ Threat</span>' : ''}
+                            ${hasReroutes ? '<span class="px-1.5 py-0.5 rounded text-[8px] font-bold bg-blue-900/30 text-blue-400 border border-blue-500/20">🔀 Rerouted</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                    <span class="px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider border ${sc}">${t.status || 'open'}</span>
+                    <span class="text-[9px] text-outline font-mono">${t.created_at ? new Date(t.created_at.replace(' ','T')).toLocaleDateString() : '&mdash;'}</span>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function dashFilterTickets(status, btn) {
+    _dashFilter = status;
+    document.querySelectorAll('#dash-ticket-filters button').forEach(b => {
+        b.style.background = '';
+        b.style.color = '';
+        b.style.borderColor = '';
+        b.setAttribute('data-active','');
+    });
+    btn.style.background = 'rgba(0,217,255,0.15)';
+    btn.style.color = '#00d9ff';
+    btn.style.borderColor = 'rgba(0,217,255,0.3)';
+    _renderDashTickets();
 }
 
 async function loadHistory() {
@@ -369,7 +435,7 @@ async function loadHistory() {
         if (!items.length) return;
         container.innerHTML = items.slice(0, 8).map(it => {
             const ts = it.created_at ? new Date(it.created_at).toLocaleString() : '—';
-            const statusBg = it.status==='failed' ? 'bg-error-container/20 text-error border-error/20' : 'bg-secondary-container/20 text-secondary border-secondary/20';
+            const statusBg = it.status==='failed' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
             return `<div class="glass-panel p-4 rounded-xl border border-white/5 hover:bg-surface-bright/30 transition-all cursor-pointer group" onclick="window.location.href='/analysis'">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3 flex-1 min-w-0">
@@ -378,7 +444,7 @@ async function loadHistory() {
                         </div>
                         <div class="min-w-0">
                             <div class="text-sm font-bold text-white truncate group-hover:text-secondary transition-colors">${it.query || 'Analysis'}</div>
-                            <div class="text-[10px] text-outline font-mono">${ts} • #${(it.session_id||'').substring(0,8)}</div>
+                            <div class="text-[10px] text-outline font-mono">${ts}</div>
                         </div>
                     </div>
                     <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${statusBg} flex-shrink-0 ml-3">${it.status||'completed'}</span>

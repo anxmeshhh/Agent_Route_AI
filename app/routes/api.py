@@ -34,6 +34,8 @@ from .tools_routes import tools_bp
 from .route_engine import route_bp
 from .auth_routes import auth_bp
 from .ticket_routes import ticket_bp
+from .geocode_routes import geocode_bp
+from .admin_routes import admin_bp
 
 # ── Register children onto api_bp ─────────────────────────────────
 api_bp.register_blueprint(analyze_bp)
@@ -47,3 +49,5 @@ api_bp.register_blueprint(tools_bp)
 api_bp.register_blueprint(route_bp)
 api_bp.register_blueprint(auth_bp)
 api_bp.register_blueprint(ticket_bp)
+api_bp.register_blueprint(geocode_bp)
+api_bp.register_blueprint(admin_bp)

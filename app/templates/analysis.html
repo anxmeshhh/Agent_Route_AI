@@ -560,7 +560,7 @@
                     <span class="text-[10px] text-outline truncate flex-1" id="result-ticket-title">—</span>
                 </div>
                 <!-- Sub-tabs: Risk / Intel / Factors / Decision / Routes -->
-                <div class="flex gap-1 px-3 pt-1.5 pb-1.5 border-b border-white/5 overflow-x-auto flex-shrink-0" id="result-tabs">
+                <div class="flex flex-wrap gap-1 px-3 pt-1.5 pb-1.5 border-b border-white/5 flex-shrink-0" id="result-tabs" style="scrollbar-width:none;">
                     <button class="result-tab active" onclick="switchTab('risk')">Risk</button>
                     <button class="result-tab" onclick="switchTab('intel')">Intel</button>
                     <button class="result-tab" onclick="switchTab('factors')">Factors</button>
@@ -626,39 +626,87 @@
         <!-- MODE: THREAT INDUCE                             -->
         <!-- ════════════════════════════════════════════════ -->
         <div class="flex-1 flex flex-col overflow-hidden hidden" id="sim-mode-threat">
-            <div class="flex-1 overflow-y-auto p-3">
+            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+
+                <!-- Step flow guide -->
+                <div class="flex items-center gap-1 px-1">
+                    <div class="flex items-center gap-1">
+                        <div class="w-5 h-5 rounded-full bg-secondary/20 border border-secondary/40 flex items-center justify-center text-[9px] font-bold text-secondary">1</div>
+                        <span class="text-[9px] text-secondary font-bold">Normal</span>
+                    </div>
+                    <div class="flex-1 h-px bg-white/10 mx-1"></div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-5 h-5 rounded-full bg-red-500/30 border border-red-500/50 flex items-center justify-center text-[9px] font-bold text-red-400">2</div>
+                        <span class="text-[9px] text-red-400 font-bold">Threat</span>
+                    </div>
+                    <div class="flex-1 h-px bg-white/10 mx-1"></div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[9px] font-bold text-outline">3</div>
+                        <span class="text-[9px] text-outline font-bold">Suggest</span>
+                    </div>
+                </div>
+
+                <!-- Active ticket info bar -->
+                <div class="rounded-lg px-3 py-2 border flex items-center gap-2" style="background:rgba(255,100,70,0.06);border-color:rgba(255,100,70,0.2)">
+                    <span class="text-sm">🎫</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[9px] text-outline uppercase tracking-wide font-bold mb-0.5">Active Ticket</div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-mono font-bold text-primary" id="threat-ticket-id">—</span>
+                            <span class="text-[10px] text-outline truncate" id="threat-ticket-route">Select a completed ticket first</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Threat controls -->
-                <div class="glass-panel p-3 rounded-xl border border-white/5 mb-3">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-sm">⚠️</span>
-                        <h3 class="text-xs font-bold text-white uppercase tracking-wider">Threat Simulation</h3>
+                <div class="rounded-xl border overflow-hidden" style="background:rgba(127,29,29,0.12);border-color:rgba(255,31,61,0.2)">
+                    <div class="px-4 py-3 border-b" style="border-color:rgba(255,31,61,0.15)">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">⚠️</span>
+                            <div>
+                                <div class="text-xs font-bold text-white">Threat Induction Engine</div>
+                                <div class="text-[9px] text-outline mt-0.5">Groq AI · Realistic mid-route disruption</div>
+                            </div>
+                        </div>
                     </div>
-                    <p class="text-[10px] text-outline mb-3">Groq AI generates a realistic mid-route disruption for the active ticket's route.</p>
-                    <div class="flex gap-2">
-                        <button class="flex-1 py-2.5 rounded-lg text-xs font-bold text-white border-none cursor-pointer transition-all"
-                            style="background:linear-gradient(135deg,#7f1d1d,#ff1f3d);box-shadow:0 4px 16px rgba(255,31,61,0.3)"
-                            id="btn-induce-threat" onclick="induceThreatFromPanel()">
-                            ⚡ Induce Random Threat
-                        </button>
-                        <button class="py-2 px-3 rounded-lg text-xs font-bold border cursor-pointer"
-                            style="background:transparent;border-color:rgba(255,255,255,0.1);color:#757480"
-                            onclick="clearThreat()">✕</button>
+                    <div class="px-4 py-3">
+                        <p class="text-[10px] text-on-surface-variant mb-3 leading-relaxed">Generates a realistic threat scenario — piracy, storm, port closure, fire, mechanical failure, geopolitical blockade, and more — based on the active shipment route.</p>
+                        <div class="flex gap-2">
+                            <button class="flex-1 py-2.5 rounded-lg text-xs font-bold text-white border-none cursor-pointer transition-all hover:brightness-110 active:scale-95"
+                                style="background:linear-gradient(135deg,#7f1d1d,#dc2626);box-shadow:0 4px 16px rgba(220,38,38,0.35)"
+                                id="btn-induce-threat" onclick="induceThreatFromPanel()">
+                                ⚡ Induce Random Threat
+                            </button>
+                            <button class="py-2 px-3 rounded-lg text-xs font-bold border cursor-pointer hover:bg-white/5 transition-colors"
+                                style="background:transparent;border-color:rgba(255,255,255,0.12);color:#757480"
+                                onclick="clearThreat()" title="Clear threat">✕</button>
+                        </div>
                     </div>
                 </div>
-                <!-- Active ticket info -->
-                <div class="mb-3 px-1">
-                    <div class="flex items-center gap-2">
-                        <span class="text-[9px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded" id="threat-ticket-id">—</span>
-                        <span class="text-[10px] text-outline" id="threat-ticket-route">Select a ticket first</span>
-                    </div>
+
+                <!-- Map hint -->
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)">
+                    <span class="text-sm flex-shrink-0">🗺️</span>
+                    <p class="text-[9px] text-outline leading-relaxed">After inducing a threat, the map shows a <strong class="text-red-400">danger zone</strong> at the threat location and <strong class="text-red-400">blocks</strong> the current route.</p>
                 </div>
+
                 <!-- Threat display area -->
                 <div id="threat-display-panel">
-                    <div class="text-center py-10">
-                        <span class="text-4xl block mb-3 opacity-30">⚠️</span>
-                        <div class="text-xs text-outline mb-1">Click <strong class="text-[#ff6e84]">⚡ Induce Random Threat</strong></div>
-                        <div class="text-[10px] text-outline">Simulates: piracy, storm, port closure, fire, collision, strike…</div>
+                    <div class="text-center py-8">
+                        <span class="text-4xl block mb-3 opacity-25">⚠️</span>
+                        <div class="text-xs text-outline mb-1">Click <strong class="text-red-400">⚡ Induce Random Threat</strong> above</div>
+                        <div class="text-[10px] text-outline opacity-60">Simulates: piracy • storm • port closure • fire • collision • strike</div>
                     </div>
+                </div>
+
+                <!-- Navigate hint -->
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[9px] text-outline">After threat is shown →</span>
+                    <button onclick="switchSimMode('suggest',document.getElementById('simtab-suggest'))"
+                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:brightness-110"
+                        style="background:rgba(0,102,255,0.15);border:1px solid rgba(0,102,255,0.3);color:#60a5fa">
+                        💡 Go to Suggestions →
+                    </button>
                 </div>
             </div>
         </div>
@@ -667,32 +715,80 @@
         <!-- MODE: SUGGESTIONS & REROUTING                   -->
         <!-- ════════════════════════════════════════════════ -->
         <div class="flex-1 flex flex-col overflow-hidden hidden" id="sim-mode-suggest">
-            <div class="flex-1 overflow-y-auto p-3">
-                <!-- Reroute controls -->
-                <div class="glass-panel p-3 rounded-xl border border-white/5 mb-3">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-sm">🔀</span>
-                        <h3 class="text-xs font-bold text-white uppercase tracking-wider">Smart Rerouting</h3>
+            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+
+                <!-- Step flow guide -->
+                <div class="flex items-center gap-1 px-1">
+                    <div class="flex items-center gap-1">
+                        <div class="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[9px] font-bold text-outline">1</div>
+                        <span class="text-[9px] text-outline font-bold">Normal</span>
                     </div>
-                    <p class="text-[10px] text-outline mb-3">AI generates 4 alternative routes avoiding the threat zone, with cost/time/risk comparison.</p>
-                    <button class="w-full py-2.5 rounded-lg text-xs font-bold text-white border-none cursor-pointer transition-all"
-                        style="background:linear-gradient(135deg,#0c3577,#0066ff);box-shadow:0 4px 16px rgba(0,102,255,0.3)"
-                        id="btn-gen-reroutes" onclick="genReroutesFromPanel()">
-                        🔀 Generate Alternative Routes
-                    </button>
+                    <div class="flex-1 h-px bg-white/10 mx-1"></div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[9px] font-bold text-outline">2</div>
+                        <span class="text-[9px] text-outline font-bold">Threat</span>
+                    </div>
+                    <div class="flex-1 h-px bg-white/10 mx-1"></div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-5 h-5 rounded-full bg-blue-500/30 border border-blue-500/50 flex items-center justify-center text-[9px] font-bold text-blue-400">3</div>
+                        <span class="text-[9px] text-blue-400 font-bold">Suggestions</span>
+                    </div>
                 </div>
+
+                <!-- Threat required notice -->
+                <div class="rounded-lg px-3 py-2 border flex items-center gap-2" style="background:rgba(255,100,70,0.06);border-color:rgba(255,100,70,0.2)" id="threat-required-notice">
+                    <span class="text-sm">⚡</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[9px] text-outline mb-0.5">No active threat detected</div>
+                        <button onclick="switchSimMode('threat',document.getElementById('simtab-threat'))"
+                            class="text-[10px] font-bold text-red-400 hover:text-red-300 transition-colors">
+                            ← Go to Threat tab first
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reroute controls -->
+                <div class="rounded-xl border overflow-hidden" style="background:rgba(0,30,80,0.3);border-color:rgba(0,102,255,0.25)">
+                    <div class="px-4 py-3 border-b" style="border-color:rgba(0,102,255,0.15)">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">🔀</span>
+                            <div>
+                                <div class="text-xs font-bold text-white">Smart Rerouting Engine</div>
+                                <div class="text-[9px] text-outline mt-0.5">Groq AI · 4 optimized alternatives</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-4 py-3">
+                        <p class="text-[10px] text-on-surface-variant mb-3 leading-relaxed">Generates 4 alternative routes (Air / Sea / Multimodal) that bypass the threat zone, ranked by cost, transit time, and risk score.</p>
+                        <button class="w-full py-2.5 rounded-lg text-xs font-bold text-white border-none cursor-pointer transition-all hover:brightness-110 active:scale-95"
+                            style="background:linear-gradient(135deg,#0c3577,#0066ff);box-shadow:0 4px 16px rgba(0,102,255,0.3)"
+                            id="btn-gen-reroutes" onclick="genReroutesFromPanel()">
+                            🔀 Generate Alternative Routes & Suggestions
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Map hint -->
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)">
+                    <span class="text-sm flex-shrink-0">🗺️</span>
+                    <p class="text-[9px] text-outline leading-relaxed">The map will show all <strong class="text-blue-400">4 route options</strong> color-coded by mode. The <strong class="text-emerald-400">★ recommended</strong> route animates a moving vehicle.</p>
+                </div>
+
                 <!-- Weather bar -->
-                <div id="weather-bar-display" class="hidden mb-3"></div>
+                <div id="weather-bar-display" class="hidden"></div>
+
                 <!-- Recommendation banner -->
-                <div id="recommendation-banner" class="hidden mb-3"></div>
+                <div id="recommendation-banner" class="hidden"></div>
+
                 <!-- Reroute cards -->
                 <div id="reroute-cards-display">
-                    <div class="text-center py-10">
-                        <span class="text-4xl block mb-3 opacity-30">🔀</span>
-                        <div class="text-xs text-outline mb-1">First induce a threat in the <strong class="text-[#ff6e84]">⚡ Threat</strong> tab</div>
-                        <div class="text-[10px] text-outline">Then generate reroutes to see alternatives with cost, time, risk analysis</div>
+                    <div class="text-center py-8">
+                        <span class="text-4xl block mb-3 opacity-25">🔀</span>
+                        <div class="text-xs text-outline mb-1">First induce a threat in the <strong class="text-red-400">⚡ Threat</strong> tab</div>
+                        <div class="text-[10px] text-outline opacity-60">Then generate reroutes to see alternatives with cost · time · risk analysis</div>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -731,14 +827,25 @@ function fillExample(origin, dest, cargo, eta, budget, weight) {
 </script>
 
 <!-- main.js with ALL the logic -->
-<script src="{{ url_for('static', filename='js/main.js') }}?v=901"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=903"></script>
 
 <script>
 
-// ── Wire example chips ──────────────────────────────────
+// ── Wire example chips + deep-link handling ─────────────
 document.addEventListener('DOMContentLoaded', function() {
     // Auto-generate UUID on load
     genUUID();
+
+    // ── Deep-link from dashboard: ?uuid=SHP-xxx&ticket=TKT-00001 ──
+    const urlParams = new URLSearchParams(window.location.search);
+    const deepUUID   = urlParams.get('uuid');
+    const deepTicket = urlParams.get('ticket');
+    if (deepUUID) {
+        const uuidEl = document.getElementById('shipment-uuid');
+        if (uuidEl) uuidEl.value = deepUUID;
+        const bdEl = document.getElementById('board-shipment-uuid');
+        if (bdEl) bdEl.textContent = deepUUID;
+    }
 
     // Load user info for role label
     fetch('/api/auth/me', {credentials:'include'})
@@ -758,6 +865,25 @@ document.addEventListener('DOMContentLoaded', function() {
     if (ex1) ex1.addEventListener('click', () => fillExample('Delhi','Kochi','pharmaceuticals',3,25000,500));
     if (ex2) ex2.addEventListener('click', () => fillExample('Mumbai','Bangalore','electronics',2,15000,200));
     if (ex3) ex3.addEventListener('click', () => fillExample('Shanghai','Rotterdam','electronics',28,85000,18000));
+
+    // If arriving from dashboard with a ticket ref, auto-open it after tickets load
+    if (deepTicket) {
+        // Wait for loadTickets (called by main ticket script) to populate _allTickets
+        let retries = 0;
+        const tryOpen = setInterval(() => {
+            if (typeof viewTicketResult === 'function' && typeof _allTickets !== 'undefined' && _allTickets.length > 0) {
+                clearInterval(tryOpen);
+                const tkt = _allTickets.find(t => t.ticket_id === deepTicket);
+                if (tkt && tkt.status === 'completed') {
+                    viewTicketResult(deepTicket);
+                } else if (tkt) {
+                    // Just highlight — ticket not yet completed
+                    document.getElementById('ticket-board-panel')?.classList.remove('hidden');
+                }
+            }
+            if (++retries > 30) clearInterval(tryOpen); // give up after 3s
+        }, 100);
+    }
 });
 
 // ── Override form submission ─────────────────────────────
@@ -1040,8 +1166,30 @@ async function runTicketAnalysis(ticketId, ev) {
         const r = await fetch(`/api/tickets/${ticketId}/analyze`, {
             method:'POST', credentials:'include'
         });
-        const data = await r.json();
-        if (!r.ok) { alert(data.error || 'Failed to start analysis'); return; }
+
+        // Guard: server might return HTML error page on 500
+        let data;
+        try {
+            data = await r.json();
+        } catch (parseErr) {
+            console.error('[ticket] Non-JSON response:', r.status, parseErr);
+            alert(`Server error (${r.status}). The ticket may be stuck — try again in a moment.`);
+            // Try to reset stuck ticket status
+            try {
+                await fetch(`/api/tickets/${ticketId}/status`, {
+                    method:'PATCH', headers:{'Content-Type':'application/json'},
+                    credentials:'include', body: JSON.stringify({status:'open'})
+                });
+            } catch(_) {}
+            loadTickets();
+            return;
+        }
+
+        if (!r.ok) {
+            alert(data.error || 'Failed to start analysis');
+            loadTickets();
+            return;
+        }
 
         // Switch to results view
         document.getElementById('ticket-board-panel')?.classList.add('hidden');
@@ -1073,14 +1221,14 @@ async function runTicketAnalysis(ticketId, ev) {
                     const w = JSON.parse(ev2.data);
                     const result = w.data || w;
                     es.close();
-                    if (typeof onComplete === 'function') onComplete(result, null, null, null);
+                    if (typeof populateNormalResults === 'function') populateNormalResults(result);
                 } catch(_){}
             });
             es.addEventListener('error', ev2 => { es.close(); });
             es.addEventListener('done',  () => { es.close(); });
         }
 
-        // After 3s, refresh ticket board in background to show updated status
+        // After 2s, refresh ticket board in background to show updated status
         setTimeout(() => {
             loadTickets();
             // Show Back button
@@ -1088,7 +1236,11 @@ async function runTicketAnalysis(ticketId, ev) {
             if (backBtn) backBtn.classList.remove('hidden');
         }, 2000);
 
-    } catch(e) { console.error('[ticket] analyze error:', e); }
+    } catch(e) {
+        console.error('[ticket] analyze error:', e);
+        alert('Network error: ' + e.message);
+        loadTickets();
+    }
 }
 
 // ── VIEW CACHED RESULT ────────────────────────────────
@@ -1113,7 +1265,7 @@ async function viewTicketResult(ticketId, ev) {
         switchSimMode('normal', document.getElementById('simtab-normal'));
         const resState = document.getElementById('results-state');
         if (resState) { resState.classList.remove('hidden'); resState.style.display = 'flex'; }
-        if (typeof onComplete === 'function') onComplete(data.ticket.result, null, null, null);
+        populateNormalResults(data.ticket.result);
 
         // Restore cached threat data if available
         if (data.ticket.threat) {
@@ -1143,7 +1295,10 @@ async function viewTicketResult(ticketId, ev) {
                     <span class="mode-badge mode-${rec.mode||'SEA'}">${rec.mode||''}</span></div>
                     <div class="text-[10px] text-[#c8dff5]">${_esc(rec.reason||'')}</div></div>`;
             }
-            if (cardsDisplay) renderReroutes(data.ticket.reroutes, cardsDisplay);
+            if (cardsDisplay) {
+                window._lastRerouteStored = data.ticket.reroutes;
+                renderReroutes(data.ticket.reroutes, cardsDisplay);
+            }
         }
     } catch(e) { console.error('[ticket] view error:', e); }
 }
@@ -1172,9 +1327,188 @@ function backToBoard() {
     loadTickets();
 }
 
-// ── Expose for main.js onComplete ─────────────────────
+// ── Populate the Normal tab sub-panels from result JSON ──
+function populateNormalResults(result) {
+    if (!result) return;
+    console.log('[populate] Normal results:', Object.keys(result));
+
+    // Parse stringified JSON fields
+    ['factors_json','mitigation_json'].forEach(k => {
+        if (typeof result[k]==='string') try { result[k]=JSON.parse(result[k]); } catch(_) { result[k]=[]; }
+    });
+
+    const score     = result.risk_score ?? 0;
+    const level     = result.risk_level || (score>=75?'CRITICAL':score>=55?'HIGH':score>=30?'MODERATE':'LOW');
+    const intake    = result.intake || {};
+    const etaDays   = result.eta_days || intake.eta_days || '--';
+    const etaHours  = result.eta_hours || intake.eta_hours;
+    const cargo     = result.cargo_type || intake.cargo_type || '--';
+    const transport = result.transport_mode || intake.transport_mode || 'road';
+    const origin    = intake.origin_port || result.origin_port || result.origin || '--';
+    const dest      = intake.port || intake.destination || result.destination || result.port || '--';
+
+    // ── Risk Tab ───────────────────────────────────────
+    const scoreEl = document.getElementById('risk-score-val');
+    if (scoreEl) scoreEl.textContent = score + '/100';
+    const barFill = document.getElementById('risk-bar-fill');
+    if (barFill) {
+        const barColor = score>=75?'#ef4444':score>=55?'#f97316':score>=30?'#f59e0b':'#22c55e';
+        barFill.style.width = Math.min(score,100)+'%';
+        barFill.style.background = barColor;
+    }
+    const badge = document.getElementById('risk-level-badge');
+    if (badge) {
+        badge.textContent = level;
+        const cls = {LOW:'level-low',MODERATE:'level-medium',MEDIUM:'level-medium',HIGH:'level-high',CRITICAL:'level-critical'}[level.toUpperCase()]||'';
+        badge.className = 'risk-pill ' + cls;
+    }
+    const etaEl = document.getElementById('eta-val');
+    if (etaEl) etaEl.textContent = (etaHours && transport==='road') ? '~'+etaHours+'h' : (etaDays!=='--' ? etaDays+' days' : '--');
+    const costEl = document.getElementById('cost-val');
+    if (costEl) costEl.textContent = result.estimated_cost ? '$'+Number(result.estimated_cost).toLocaleString() : (result.cost_estimate || '--');
+    const planEl = document.getElementById('plan-val');
+    if (planEl) planEl.textContent = result.mitigation_plan || result.plan || ({road:'Road',air:'Air',sea:'Maritime'}[transport]||transport);
+    const reasonEl = document.getElementById('risk-reasoning');
+    if (reasonEl) reasonEl.textContent = result.risk_explanation || result.llm_reasoning || result.reasoning || 'Analysis complete.';
+
+    // ── Intel Tab ──────────────────────────────────────
+    const intelEl = document.getElementById('intel-content');
+    if (intelEl) {
+        // news data can be: array of items, or dict with {articles, risk_signals}
+        let newsRaw = result.news_items || result.news || result.intelligence || [];
+        let newsItems = [];
+        if (newsRaw && typeof newsRaw === 'object' && !Array.isArray(newsRaw)) {
+            // It's the full news agent dict — extract articles + risk_signals
+            newsItems = [].concat(newsRaw.risk_signals || [], newsRaw.articles || []);
+        } else if (Array.isArray(newsRaw)) {
+            newsItems = newsRaw;
+        }
+        // Also merge weather data if available
+        const wxData = result.weather;
+        let weatherHtml = '';
+        if (wxData && typeof wxData === 'object') {
+            // Build summary from actual weather agent fields
+            const cond = wxData.conditions || '';
+            const wind = wxData.wind_speed || 0;
+            const temp = wxData.temperature;
+            const vis  = wxData.visibility || 10000;
+            const wxScore = wxData.weather_score;
+            const wxSignals = wxData.risk_signals || [];
+            const wxCity = wxData.port_city || '';
+            const wxSrc = wxData.source || '';
+
+            let summaryParts = [];
+            if (wxCity) summaryParts.push(wxCity + ':');
+            if (cond) summaryParts.push(cond);
+            if (temp != null) summaryParts.push(temp + '°C');
+            if (wind) summaryParts.push('Wind ' + wind.toFixed(1) + ' m/s');
+            if (vis < 8000) summaryParts.push('Vis ' + (vis/1000).toFixed(1) + 'km');
+            const wxSummary = summaryParts.join(' · ');
+
+            weatherHtml = `<div class="p-2.5 mb-3 rounded-lg border" style="background:rgba(0,217,255,0.04);border-color:rgba(0,217,255,0.15)">
+                <div class="flex items-center gap-2 mb-1"><span>🌤</span><span class="text-[10px] font-bold text-secondary uppercase">Weather Intelligence</span>
+                ${wxScore != null ? '<span class="text-[9px] font-mono text-outline ml-auto">Score: '+wxScore+'/35</span>' : ''}
+                ${wxSrc ? '<span class="text-[8px] font-mono text-outline">via '+_esc(wxSrc)+'</span>' : ''}</div>
+                <div class="text-[9px] text-on-surface-variant leading-relaxed">${_esc(wxSummary)}</div>
+                ${wxSignals.length ? wxSignals.map(s => '<div class="text-[9px] mt-1" style="color:'+(s.severity==='HIGH'?'#fca5a5':s.severity==='MEDIUM'?'#fde68a':'#4ade80')+'">⚠ '+_esc(s.title||'')+' — '+_esc(s.detail||'')+'</div>').join('') : '<div class="text-[9px] text-[#4ade80] mt-1">✓ No weather risks detected</div>'}
+            </div>`;
+        }
+        if (newsItems.length) {
+            intelEl.innerHTML = weatherHtml + newsItems.map(n => `
+                <div class="p-2 mb-2 rounded-lg border" style="background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.06)">
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        ${n.severity ? '<span class="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded" style="background:rgba(255,255,255,0.06);color:'+(n.severity==='CRITICAL'?'#ff6e84':n.severity==='HIGH'?'#ffb148':n.severity==='MEDIUM'?'#facc15':'#4ade80')+'">' + _esc(n.severity) + '</span>' : ''}
+                        <div class="text-[10px] font-bold text-white">${_esc(n.title || n.headline || '')}</div>
+                    </div>
+                    <div class="text-[9px] text-outline">${_esc(n.summary || n.snippet || n.description || n.detail || '')}</div>
+                    ${n.source ? '<div class="text-[8px] text-outline mt-1 font-mono">Source: '+_esc(n.source)+'</div>' : ''}
+                </div>
+            `).join('');
+        } else {
+            const intelText = result.news_summary || result.intel_summary || '';
+            intelEl.innerHTML = weatherHtml + (intelText ? '<p class="text-xs leading-relaxed">' + _esc(intelText) + '</p>'
+                : '<p class="text-xs text-outline">No specific intelligence alerts for this route.</p>');
+        }
+    }
+
+    // ── Factors Tab ────────────────────────────────────
+    const factorsEl = document.getElementById('factors-content');
+    if (factorsEl) {
+        const factors = result.factors || result.factors_json || [];
+        if (Array.isArray(factors) && factors.length) {
+            const sevCol = s => ({HIGH:'#f97316',CRITICAL:'#ef4444',MEDIUM:'#f59e0b',LOW:'#22c55e'}[(s||'').toUpperCase()]||'#9ca3af');
+            factorsEl.innerHTML = factors.map(f => {
+                const col   = sevCol(f.severity);
+                const title = f.factor || f.title || 'Risk Factor';
+                const detail= f.detail || f.description || '';
+                return `<div class="p-2 mb-2 rounded-lg" style="border-left:3px solid ${col};background:rgba(255,255,255,0.03)">
+                    <div class="flex items-center gap-2 mb-0.5">
+                        <span class="text-[10px] font-bold text-white">${_esc(title)}</span>
+                        ${f.severity ? '<span class="text-[8px] font-bold uppercase" style="color:'+col+'">'+_esc(f.severity)+'</span>' : ''}
+                    </div>
+                    ${detail ? '<div class="text-[9px] text-outline">'+_esc(detail)+'</div>' : ''}
+                </div>`;
+            }).join('');
+        } else {
+            factorsEl.innerHTML = '<p class="text-xs text-outline">No significant risk factors detected.</p>';
+        }
+    }
+
+    // ── Decision Tab ──────────────────────────────────
+    const decisionEl = document.getElementById('decision-content');
+    if (decisionEl) {
+        const synthesis = result.decision_synthesis || result.llm_reasoning || result.reasoning || '';
+        const tradeOffs = result.trade_offs || '';
+        let html = '';
+        if (synthesis) html += '<div class="mb-3"><div class="text-[9px] font-bold text-secondary uppercase tracking-wide mb-1">AI Synthesis</div><p class="text-xs text-on-surface-variant leading-relaxed">' + _esc(synthesis) + '</p></div>';
+        if (tradeOffs) html += '<div class="p-2 rounded-lg mb-2" style="background:rgba(255,177,72,0.06);border:1px solid rgba(255,177,72,0.15)"><div class="text-[9px] font-bold text-tertiary uppercase tracking-wide mb-0.5">Trade-offs</div><p class="text-[10px] text-outline">' + _esc(tradeOffs) + '</p></div>';
+        if (result.confidence_score != null) {
+            const conf = Math.round(result.confidence_score * 100);
+            html += '<div class="flex items-center gap-2"><span class="text-[9px] text-outline">Confidence:</span><span class="text-xs font-bold" style="color:'+(conf>=70?'#4ade80':conf>=40?'#fde68a':'#fca5a5')+'">'+conf+'%</span></div>';
+        }
+        decisionEl.innerHTML = html || '<p class="text-xs text-outline">No decision data available.</p>';
+    }
+
+    // ── Routes Tab ────────────────────────────────────
+    const routesComparison = document.getElementById('alt-route-comparison');
+    const routesContent = document.getElementById('alt-route-comparison-content');
+    const noRoutesMsg = document.getElementById('no-routes-msg');
+    if (origin !== '--' && dest !== '--') {
+        if (noRoutesMsg) noRoutesMsg.classList.add('hidden');
+        if (routesComparison) routesComparison.classList.remove('hidden');
+        if (routesContent) {
+            const modeEmoji = {road:'🚗',air:'✈️',sea:'🚢'}[transport]||'📦';
+            routesContent.innerHTML = `
+                <div class="p-2 rounded-lg mb-2" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-sm">${modeEmoji}</span>
+                        <span class="text-[10px] font-bold text-white">${_esc(origin)} → ${_esc(dest)}</span>
+                        <span class="text-[9px] uppercase font-bold" style="color:#00d9ff">${transport.toUpperCase()}</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 mt-2">
+                        <div><div class="text-[8px] text-outline uppercase">Risk</div><div class="text-[11px] font-bold" style="color:${score>=55?'#ef4444':score>=30?'#f59e0b':'#4ade80'}">${score}/100</div></div>
+                        <div><div class="text-[8px] text-outline uppercase">ETA</div><div class="text-[11px] font-bold text-white">${etaDays!=='--' ? etaDays+'d' : '--'}</div></div>
+                        <div><div class="text-[8px] text-outline uppercase">Mode</div><div class="text-[11px] font-bold text-white">${transport}</div></div>
+                    </div>
+                </div>
+                <div class="text-[9px] text-outline mt-1">💡 Induce a <strong class="text-red-400">Threat</strong> to see alternative reroutes with cost/time comparisons.</div>
+            `;
+        }
+    }
+
+    // ── Render map route for Normal tab ────────────────
+    if (origin !== '--' && dest !== '--' && origin !== dest) {
+        if (typeof renderRouteMap === 'function') {
+            renderRouteMap(origin, dest, score);
+        } else if (typeof window.renderRouteMap === 'function') {
+            window.renderRouteMap(origin, dest, score);
+        }
+    }
+}
+
+// ── Expose for main.js SSE data flow ──────────────────
 window._handleSSEData = function(result) {
-    if (typeof onComplete === 'function') onComplete(result, null, null, null);
+    populateNormalResults(result);
 };
 
 // ── Utils ──────────────────────────────────────────────
@@ -1200,6 +1534,12 @@ function switchSimMode(mode, btn) {
     document.getElementById('sim-mode-threat')?.classList.add('hidden');
     document.getElementById('sim-mode-suggest')?.classList.add('hidden');
     document.getElementById('sim-mode-' + mode)?.classList.remove('hidden');
+
+    // Show/hide threat-required notice on the suggestions panel
+    if (mode === 'suggest') {
+        const notice = document.getElementById('threat-required-notice');
+        if (notice) notice.classList.toggle('hidden', !!_currentThreat);
+    }
 
     // 🗺 Map mode sync
     if (mode === 'normal') {
@@ -1227,6 +1567,30 @@ function clearThreat() {
         </div>`;
     document.getElementById('weather-bar-display')?.classList.add('hidden');
     document.getElementById('recommendation-banner')?.classList.add('hidden');
+}
+
+// ── Induce threat from ticket card button ─────────────
+async function induceThreat(ticketId, ev) {
+    if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+    _activeTicket = ticketId;
+    const tkt = _allTickets.find(t => t.ticket_id === ticketId);
+    if (tkt) {
+        document.getElementById('result-ticket-id').textContent = tkt.ticket_id;
+        document.getElementById('result-ticket-title').textContent = tkt.title;
+        document.getElementById('threat-ticket-id').textContent = tkt.ticket_id;
+        document.getElementById('threat-ticket-route').textContent = tkt.title;
+    }
+    // Show results panel, switch to Threat tab
+    document.getElementById('ticket-board-panel')?.classList.add('hidden');
+    const resState = document.getElementById('results-state');
+    if (resState) { resState.classList.remove('hidden'); resState.style.display = 'flex'; }
+    switchSimMode('threat', document.getElementById('simtab-threat'));
+    // If we have cached result, populate Normal tab too
+    if (tkt?.result_json) {
+        try { populateNormalResults(JSON.parse(tkt.result_json)); } catch(_) {}
+    }
+    // Auto-trigger threat generation
+    await induceThreatFromPanel();
 }
 
 // ── Induce threat from the panel button ──────────────
@@ -1346,6 +1710,7 @@ async function genReroutesFromPanel() {
         }
 
         // Render route cards
+        window._lastRerouteStored = data;
         renderReroutes(data, cardsDisplay);
 
         // 🗺 Trigger map simulation with reroutes
@@ -1429,14 +1794,15 @@ function renderReroutes(data, container) {
         </div>`;
     }
 
-    let routeCards = routes.map(r => {
+    let routeCards = routes.map((r, idx) => {
         const modeEmoji = {AIR:'✈️',SEA:'🚢',MULTIMODAL:'🔄'}[r.mode]||'📦';
         const costDir = (r.cost_change_pct||0) > 0 ? 'up' : 'down';
         const isRec = r.recommended;
         const riskCls = {LOW:'text-[#4ade80]',MEDIUM:'text-[#fde68a]',HIGH:'text-[#ff6e84]'}[r.risk_level]||'';
         const waypoints = (r.waypoints||[]).map(w => `<span class="text-[9px] px-1.5 py-0.5 rounded" style="background:rgba(255,255,255,0.05)">${_esc(w)}</span>`).join('<span class="text-[8px] text-[#4a6585]">→</span>');
+        const modeColor = {AIR:'#a855f7',SEA:'#06b6d4',MULTIMODAL:'#f59e0b'}[r.mode]||'#06b6d4';
 
-        return `<div class="reroute-card ${isRec?'rec':''}">
+        return `<div class="reroute-card ${isRec?'rec':''}" data-route-idx="${idx}">
             <div class="flex items-start justify-between gap-2 mb-2">
                 <div class="flex items-center gap-2">
                     <span class="text-sm">${modeEmoji}</span>
@@ -1462,11 +1828,24 @@ function renderReroutes(data, container) {
                     <div class="text-[11px] font-bold ${riskCls}">${r.risk_score}/100</div>
                 </div>
             </div>
-            <div class="text-[9px] text-[#abaab7] italic">${_esc(r.risk_reason||'')}</div>
+            <div class="text-[9px] text-[#abaab7] italic mb-2">${_esc(r.risk_reason||'')}</div>
+            <button onclick="if(typeof window.playRerouteOnMap==='function') window.playRerouteOnMap(${idx})"
+                class="w-full py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all active:scale-95 hover:brightness-110 flex items-center justify-center gap-1.5"
+                style="background:linear-gradient(135deg,${modeColor}22,${modeColor}44);border:1px solid ${modeColor}55;color:${modeColor}">
+                ▶ Simulate on Map
+            </button>
         </div>`;
     }).join('');
 
-    container.innerHTML = wxHtml + recHtml + routeCards;
+    const showAllBtn = `<button onclick="if(typeof window.simulateReroutesOnMap==='function'){
+        const tkt = typeof _allTickets!=='undefined' ? _allTickets.find(t=>t.ticket_id===_activeTicket) : null;
+        window.simulateReroutesOnMap(window._lastRerouteStored||{}, tkt?.origin||'', tkt?.destination||'');
+    }" class="w-full py-2 mt-2 rounded-lg text-[10px] font-bold cursor-pointer transition-all active:scale-95 hover:brightness-110 flex items-center justify-center gap-1.5"
+        style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#abaab7">
+        🗺 Show All Routes on Map
+    </button>`;
+
+    container.innerHTML = wxHtml + recHtml + routeCards + showAllBtn;
 }
 
 </script>

@@ -3,13 +3,13 @@ app/routes/ticket_routes.py  —  Shipment Ticket System
 execute_query(query, params, fetch=True) returns list of dicts (dictionary cursor).
 fetch=False (default) commits and returns lastrowid.
 """
-import uuid, json, threading, logging
+import uuid, json, threading, logging, time
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app, g
 from ..database import execute_query
 from ..auth.decorators import login_required
-from ._sse import init_sse_session, push_sse_event, mark_session_done
+from ._sse import init_sse_session, push_sse_event, mark_session_done, _safe_json
 from ._db_helpers import _store_shipment, _update_shipment_status, _log_to_db
 
 logger = logging.getLogger(__name__)
@@ -148,41 +148,65 @@ def get_ticket(ticket_id):
 @ticket_bp.route("/tickets/<ticket_id>/analyze", methods=["POST"])
 @login_required
 def analyze_ticket(ticket_id):
-    org_id  = getattr(g, "org_id",  1)
-    user_id = getattr(g, "user_id", None)
+    try:
+        org_id  = getattr(g, "org_id",  1)
+        user_id = getattr(g, "user_id", None)
 
-    rows = execute_query(
-        f"SELECT {_SELECT_COLS} FROM shipment_tickets WHERE ticket_id=%s AND org_id=%s",
-        (ticket_id, org_id), fetch=True
-    )
-    if not rows:
-        return jsonify({"error": "Ticket not found"}), 404
-    ticket = _serialize(rows[0])
+        rows = execute_query(
+            f"SELECT {_SELECT_COLS} FROM shipment_tickets WHERE ticket_id=%s AND org_id=%s",
+            (ticket_id, org_id), fetch=True
+        )
+        if not rows:
+            return jsonify({"error": "Ticket not found"}), 404
+        ticket = _serialize(rows[0])
 
-    if ticket["status"] == "in_progress":
-        return jsonify({"error": "Analysis already running for this ticket"}), 409
+        # Allow re-analysis of stuck tickets (server restart recovery)
+        if ticket["status"] == "in_progress":
+            # Reset tickets stuck in_progress for > 2 minutes
+            try:
+                execute_query(
+                    "UPDATE shipment_tickets SET status='open' "
+                    "WHERE ticket_id=%s AND status='in_progress' "
+                    "AND updated_at < NOW() - INTERVAL 2 MINUTE",
+                    (ticket_id,)
+                )
+                # Re-fetch to see if it was reset
+                rows2 = execute_query(
+                    f"SELECT {_SELECT_COLS} FROM shipment_tickets "
+                    "WHERE ticket_id=%s AND org_id=%s",
+                    (ticket_id, org_id), fetch=True
+                )
+                if rows2:
+                    ticket = _serialize(rows2[0])
+            except Exception:
+                pass
+            if ticket["status"] == "in_progress":
+                return jsonify({"error": "Analysis already running for this ticket"}), 409
 
-    session_id = str(uuid.uuid4())
-    init_sse_session(session_id)
+        session_id = str(uuid.uuid4())
+        init_sse_session(session_id)
 
-    execute_query(
-        "UPDATE shipment_tickets SET session_id=%s, status='in_progress' WHERE ticket_id=%s",
-        (session_id, ticket_id)
-    )
+        execute_query(
+            "UPDATE shipment_tickets SET session_id=%s, status='in_progress' WHERE ticket_id=%s",
+            (session_id, ticket_id)
+        )
 
-    app = current_app._get_current_object()
-    threading.Thread(
-        target=_run_ticket_pipeline,
-        args=(app, session_id, ticket, org_id, user_id, ticket_id),
-        daemon=True
-    ).start()
+        app = current_app._get_current_object()
+        threading.Thread(
+            target=_run_ticket_pipeline,
+            args=(app, session_id, ticket, org_id, user_id, ticket_id),
+            daemon=True
+        ).start()
 
-    return jsonify({
-        "session_id":  session_id,
-        "ticket_id":   ticket_id,
-        "stream_url":  f"/api/stream/{session_id}",
-        "status":      "running",
-    })
+        return jsonify({
+            "session_id":  session_id,
+            "ticket_id":   ticket_id,
+            "stream_url":  f"/api/stream/{session_id}",
+            "status":      "running",
+        })
+    except Exception as e:
+        logger.exception(f"[ticket] analyze_ticket error [{ticket_id}]: {e}")
+        return jsonify({"error": f"Failed to start analysis: {str(e)}"}), 500
 
 
 # ── UPDATE STATUS / PRIORITY ──────────────────────────────────────
@@ -241,7 +265,7 @@ def induce_threat(ticket_id):
     # Store threat in dedicated column
     execute_query(
         "UPDATE shipment_tickets SET threat_json=%s WHERE ticket_id=%s",
-        (json.dumps(result["threat"]), ticket_id)
+        (_safe_json(result["threat"]), ticket_id)
     )
     return jsonify(result)
 
@@ -273,7 +297,7 @@ def reroute_ticket(ticket_id):
     # Store reroutes in dedicated column
     execute_query(
         "UPDATE shipment_tickets SET reroute_json=%s WHERE ticket_id=%s",
-        (json.dumps(result), ticket_id)
+        (_safe_json(result), ticket_id)
     )
     return jsonify(result)
 
@@ -330,9 +354,16 @@ def _run_ticket_pipeline(app, session_id, ticket, org_id, user_id, ticket_id):
             )
             result = graph.run(query_text, intake_result, shipment_id)
 
+            # Use _safe_json to handle Decimal/datetime serialization
+            try:
+                result_str = _safe_json(result)
+            except Exception as ser_err:
+                logger.warning(f"[ticket] result serialization fallback: {ser_err}")
+                result_str = json.dumps(result, default=str)
+
             execute_query(
                 "UPDATE shipment_tickets SET status='completed', result_json=%s WHERE ticket_id=%s",
-                (json.dumps(result), ticket_id)
+                (result_str, ticket_id)
             )
             _update_shipment_status(session_id, "completed")
             push_sse_event(session_id, "result", result)
@@ -340,9 +371,12 @@ def _run_ticket_pipeline(app, session_id, ticket, org_id, user_id, ticket_id):
 
         except Exception as e:
             logger.exception(f"[ticket] Pipeline error [{ticket_id}]: {e}")
-            execute_query(
-                "UPDATE shipment_tickets SET status='failed' WHERE ticket_id=%s", (ticket_id,)
-            )
+            try:
+                execute_query(
+                    "UPDATE shipment_tickets SET status='failed' WHERE ticket_id=%s", (ticket_id,)
+                )
+            except Exception:
+                pass
             _update_shipment_status(session_id, "failed")
             push_sse_event(session_id, "error", {"message": str(e)})
             mark_session_done(session_id)

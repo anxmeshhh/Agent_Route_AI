@@ -156,49 +156,61 @@ def route_analysis():
     """
     origin    = request.args.get("origin", "").strip()
     dest      = request.args.get("dest",   "").strip()
-    risk_score = int(request.args.get("risk_score", 30))
     cargo_type = request.args.get("cargo_type", "general").lower()
-    eta_days   = int(request.args.get("eta_days", 14))
+
+    # Safe int parsing — frontend may pass '--' for unknown values
+    try:
+        risk_score = int(request.args.get("risk_score", 30))
+    except (ValueError, TypeError):
+        risk_score = 30
+    try:
+        eta_days = int(request.args.get("eta_days", 14))
+    except (ValueError, TypeError):
+        eta_days = 14
 
     if not origin or not dest:
         return jsonify({"error": "origin and dest required"}), 400
 
-    # ── Detect transport mode ──────────────────────────────────────
-    transport_mode = request.args.get("transport_mode", "auto").lower()
-    if transport_mode == "auto":
-        og = geocode(origin)
-        dg = geocode(dest)
-        if og and dg:
-            transport_mode = _detect_transport_mode(
-                og["lat"], og["lon"], dg["lat"], dg["lon"], origin, dest
-            )
-        else:
-            transport_mode = "sea"
+    try:
+        # ── Detect transport mode ──────────────────────────────────────
+        transport_mode = request.args.get("transport_mode", "auto").lower()
+        if transport_mode == "auto":
+            og = geocode(origin)
+            dg = geocode(dest)
+            if og and dg:
+                transport_mode = _detect_transport_mode(
+                    og["lat"], og["lon"], dg["lat"], dg["lon"], origin, dest
+                )
+            else:
+                transport_mode = "sea"
 
-    # ── 1. Route Distance Estimation (real-time OSRM) ────────────
-    route_info = _estimate_route_metrics(origin, dest)
-    route_info["transport_mode"] = transport_mode
+        # ── 1. Route Distance Estimation (real-time OSRM) ────────────
+        route_info = _estimate_route_metrics(origin, dest)
+        route_info["transport_mode"] = transport_mode
 
-    # ── 2. Delay Cost Impact Modelling (mode-aware) ──────────────
-    cost_data = _calculate_cost_impact(risk_score, cargo_type, eta_days,
-                                        route_info, transport_mode)
+        # ── 2. Delay Cost Impact Modelling (mode-aware) ──────────────
+        cost_data = _calculate_cost_impact(risk_score, cargo_type, eta_days,
+                                            route_info, transport_mode)
 
-    # ── 3. Optimal Departure Recommendation (real OWM 5-day forecast) ──
-    owm_key   = current_app.config.get("OPENWEATHER_API_KEY", "")
-    port_city = request.args.get("port_city", dest).strip()
-    departure = _optimal_departure_window(risk_score, eta_days, port_city, owm_key)
+        # ── 3. Optimal Departure Recommendation (real OWM 5-day forecast) ──
+        owm_key   = current_app.config.get("OPENWEATHER_API_KEY", "")
+        port_city = request.args.get("port_city", dest).strip()
+        departure = _optimal_departure_window(risk_score, eta_days, port_city, owm_key)
 
-    # ── 4. Alternative Route (ALWAYS compute for comparison) ─────
-    alt_route = _suggest_alternative_route(origin, dest, route_info["via"],
-                                           transport_mode, route_info)
+        # ── 4. Alternative Route (ALWAYS compute for comparison) ─────
+        alt_route = _suggest_alternative_route(origin, dest, route_info["via"],
+                                               transport_mode, route_info)
 
-    # ── 5. Time-Saving Actions ────────────────────────────────────
-    savings = _time_saving_actions(risk_score, eta_days, cargo_type, cost_data)
+        # ── 5. Time-Saving Actions ────────────────────────────────────
+        savings = _time_saving_actions(risk_score, eta_days, cargo_type, cost_data)
 
-    return jsonify({
-        "route": route_info,
-        "cost_impact": cost_data,
-        "departure_window": departure,
-        "alternative_route": alt_route,
-        "time_savings": savings,
-    })
+        return jsonify({
+            "route": route_info,
+            "cost_impact": cost_data,
+            "departure_window": departure,
+            "alternative_route": alt_route,
+            "time_savings": savings,
+        })
+    except Exception as e:
+        logger.exception(f"[route-analysis] Error: {e}")
+        return jsonify({"error": str(e)}), 500

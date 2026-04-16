@@ -361,6 +361,10 @@ def login():
 
     otp_enabled = current_app.config.get("OTP_ENABLED", False)
 
+    # ── Superadmin bypass: never requires OTP ───────────────────
+    if user["role"] == "superadmin":
+        return _issue_tokens_response(user)
+
     if otp_enabled:
         # Generate and store OTP
         otp = _make_otp()

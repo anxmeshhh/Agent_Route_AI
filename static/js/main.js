@@ -81,6 +81,7 @@ let _vehicleStep     = 0;
 let _vehicleInterval = null;
 let _totalRouteKm    = 0;
 let _routeIsLand     = false;
+let _currentTransportMode = 'sea';  // 'road' | 'air' | 'sea'
 let _currentWaypts   = [];
 let _currentResult   = null;
 let _analysisStart   = null;
@@ -266,6 +267,7 @@ async function renderRouteMap(origin, dest, riskScore) {
     // Store state
     const tMode    = transport_mode || (is_land_route ? 'road' : 'sea');
     _routeIsLand   = tMode === 'road';
+    _currentTransportMode = tMode;  // always keep in sync
     _vehicleRawWps = waypoints;
     _currentWaypts = waypoints.map(p => [p.lat, p.lon]);
     _totalRouteKm  = total_km || _calcKm(_currentWaypts);
@@ -346,7 +348,7 @@ async function renderRouteMap(origin, dest, riskScore) {
     }
 
     // Overlay card — mode-aware labels
-    const modeIcon  = tMode === 'air' ? '✈' : tMode === 'road' ? '🚗' : '🚢';
+    const modeIcon  = tMode === 'air' ? '✈️' : tMode === 'road' ? '🚛' : '🚢';
     const modeLabel = tMode === 'air' ? 'Air Route' : tMode === 'road' ? 'Road Route' : 'Maritime Route';
     const via = waypoints[0]?.via || modeLabel;
     setText('map-overlay-route-text', `${origin} → ${dest}`);
@@ -483,12 +485,14 @@ function _startVehicleAnimation() {
     _stopVehicle();
     console.log('[anim] Placing vehicle at', _vehiclePath[0]);
 
-    // Mode-aware vehicle emoji and styles
-    const isAir   = !_routeIsLand && _vehicleRawWps?.[0]?.via?.toLowerCase().includes('air');
-    const emoji   = isAir ? '✈️' : _routeIsLand ? '🚗' : '🚢';
-    const tooltip = isAir ? '✈ Aircraft in Flight' : _routeIsLand ? '🚗 Vehicle in Transit' : '🚢 Vessel in Transit';
-    const wrapCls = isAir ? 'air-icon-wrap' : _routeIsLand ? 'vehicle-icon-wrap' : 'ship-icon-wrap';
-    const mkCls   = isAir ? 'air-animation-marker' : _routeIsLand ? 'vehicle-animation-marker' : 'ship-animation-marker';
+    // Mode-aware vehicle emoji and styles — always driven by _currentTransportMode
+    const tMode   = _currentTransportMode || (_routeIsLand ? 'road' : 'sea');
+    const isAir   = tMode === 'air';
+    const isRoad  = tMode === 'road';
+    const emoji   = isAir ? '✈️' : isRoad ? '🚛' : '🚢';
+    const tooltip = isAir ? '✈ Aircraft in Flight' : isRoad ? '🚛 Truck in Transit' : '🚢 Vessel in Transit';
+    const wrapCls = isAir ? 'air-icon-wrap' : isRoad ? 'vehicle-icon-wrap' : 'ship-icon-wrap';
+    const mkCls   = isAir ? 'air-animation-marker' : isRoad ? 'vehicle-animation-marker' : 'ship-animation-marker';
 
     const icon = L.divIcon({
         className: mkCls,
@@ -573,7 +577,9 @@ function _fireCheckpoint({ name, lat, lon, rawIdx }) {
     showEl('ai-decision-banner');
     _showMapDecision(`📍 ${name}\n${msgs[1]}`);
     _showCheckpointPopup(lat, lon, name, msgs);
-    const icon = _routeIsLand ? '🚗' : '🚢';
+    // Mode-correct icon for log
+    const tMode = _currentTransportMode || (_routeIsLand ? 'road' : 'sea');
+    const icon = tMode === 'air' ? '✈️' : tMode === 'road' ? '🚛' : '🚢';
     appendLog('graph', `${icon} ${name} — ${msgs[1]}`, 'success');
 }
 
@@ -968,6 +974,12 @@ async function onComplete(result, btn, btnText, spinner) {
     _currentResult = result;
     hideEl('brand-panel');
     renderResult(result);
+
+    // Also populate the analysis.html Normal tab sub-panels (Risk/Intel/Factors/Decision/Routes)
+    if (typeof window._handleSSEData === 'function') {
+        window._handleSSEData(result);
+    }
+
     loadHistory();
     // Auto-switch to Intel tab so Route Intelligence is immediately visible
     setTimeout(() => {
@@ -1166,20 +1178,36 @@ async function fetchRouteAnalysis(origin, dest, riskScore, cargoType, etaDays, t
         console.warn('[route-analysis] Skipped — empty origin/dest:', o, d);
         return;
     }
+
+    // Sanitise values — backend expects clean integers, not '--' strings
+    const _asNum = v => { const n = parseFloat(v); return isFinite(n) && n > 0 ? n : null; };
+    const safeRisk  = _asNum(riskScore)  ?? 30;
+    const safeEta   = _asNum(etaDays)    ?? 14;
+    const safeMode  = transportMode && transportMode !== '--' ? transportMode : (_currentTransportMode || 'auto');
+    const safeCargo = cargoType && cargoType !== '--' ? cargoType : 'general';
+
+    console.log('[route-analysis] calling API:', o, '->', d, '| risk:', safeRisk, '| eta:', safeEta, '| mode:', safeMode);
+
     try {
         const p = new URLSearchParams({
-            origin, dest,
-            port_city:      dest,
-            risk_score:     riskScore||30,
-            cargo_type:     cargoType||'general',
-            eta_days:       etaDays||14,
-            transport_mode: transportMode||'auto',
+            origin: o, dest: d,
+            port_city:      d,
+            risk_score:     safeRisk,
+            cargo_type:     safeCargo,
+            eta_days:       safeEta,
+            transport_mode: safeMode,
         });
         const r = await fetch(`/api/route-analysis?${p}`);
-        if (!r.ok) return;
-        const d = await r.json();
-        const { cost_impact, departure_window, alternative_route } = d;
-        if (!cost_impact) return;
+        if (!r.ok) {
+            console.warn('[route-analysis] API error:', r.status);
+            return;
+        }
+        const data = await r.json();
+        const { cost_impact, departure_window, alternative_route } = data;
+        if (!cost_impact) {
+            console.warn('[route-analysis] No cost_impact in response:', data);
+            return;
+        }
         showEl('route-intel-strip');
 
         // KPI values
@@ -1253,8 +1281,8 @@ async function fetchRouteAnalysis(origin, dest, riskScore, cargoType, etaDays, t
         }
 
         // ── Render Alt-Route Comparison Panel ────────────────────
-        _renderAltRouteComparison(alternative_route, transportMode);
-    } catch(e) { console.warn('[route-analysis]',e); }
+        _renderAltRouteComparison(alternative_route, safeMode);
+    } catch(e) { console.warn('[route-analysis]', e); }
 }
 
 function _renderAltRouteComparison(altRoute, transportMode) {
@@ -1486,13 +1514,32 @@ function _clearRerouteLayers() {
     _rerouteLayers = [];
 }
 
-/** Geocode a place name via Nominatim (free, no key needed). */
+/** Geocode a place name via our Flask proxy (avoids CORS). Cached. */
+const _geoCache = {};
+let _lastGeoTime = 0;
 async function _geocodePlace(place) {
+    if (!place) return null;
+    const key = place.toLowerCase().trim();
+    if (_geoCache[key]) return _geoCache[key];
     try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`;
-        const r = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+        // rate-limit: at least 200ms between calls
+        const now = Date.now();
+        const wait = Math.max(0, 200 - (now - _lastGeoTime));
+        if (wait > 0) await new Promise(r => setTimeout(r, wait));
+        _lastGeoTime = Date.now();
+
+        const url = `/api/geocode?q=${encodeURIComponent(place)}`;
+        const r = await fetch(url, { credentials: 'include' });
+        if (!r.ok) {
+            console.warn('[geocode]', place, 'status', r.status);
+            return null;
+        }
         const j = await r.json();
-        if (j && j[0]) return { lat: parseFloat(j[0].lat), lon: parseFloat(j[0].lon) };
+        if (j && j.lat != null && j.lon != null) {
+            const result = { lat: parseFloat(j.lat), lon: parseFloat(j.lon) };
+            _geoCache[key] = result;
+            return result;
+        }
     } catch(e) { console.warn('[geocode]', place, e.message); }
     return null;
 }
@@ -1635,7 +1682,7 @@ async function simulateReroutesOnMap(rerouteData, origin, destination) {
         const routes = rerouteData.routes || [];
         if (routes.length === 0) return;
 
-        const modeColors = { AIR: '#a855f7', SEA: '#06b6d4', MULTIMODAL: '#f59e0b' };
+        const modeColors = { AIR: '#a855f7', SEA: '#06b6d4', ROAD: '#f59e0b', MULTIMODAL: '#10b981' };
         const recRoute = routes.find(r => r.recommended) || routes[0];
         const allBounds = L.latLngBounds([]);
         let recWaypoints = null;
@@ -1672,7 +1719,7 @@ async function simulateReroutesOnMap(rerouteData, origin, destination) {
             _rerouteLayers.push(glow);
 
             // Main line
-            const dashArr = route.mode === 'AIR' ? '4,12' : route.mode === 'MULTIMODAL' ? '8,6' : '6,8';
+            const dashArr = route.mode === 'AIR' ? '4,12' : route.mode === 'ROAD' ? '5,9' : route.mode === 'MULTIMODAL' ? '8,6' : '6,8';
             const line = L.polyline(fullPath, {
                 color, weight, opacity,
                 dashArray: isRec ? null : dashArr,
@@ -1681,7 +1728,7 @@ async function simulateReroutesOnMap(rerouteData, origin, destination) {
 
             // Route label at midpoint
             const midIdx = Math.floor(fullPath.length / 2);
-            const modeEmoji = { AIR: '✈️', SEA: '🚢', MULTIMODAL: '🔄' }[route.mode] || '📦';
+            const modeEmoji = { AIR: '✈️', SEA: '🚢', ROAD: '🚛', MULTIMODAL: '🔄' }[route.mode] || '📦';
             const labelHtml = `<div style="
                 background:rgba(12,12,24,0.92);
                 border:1px solid ${isRec ? color : 'rgba(255,255,255,0.1)'};
@@ -1718,22 +1765,24 @@ async function simulateReroutesOnMap(rerouteData, origin, destination) {
         // Animate vehicle on recommended route
         if (recWaypoints && recWaypoints.length >= 2) {
             setTimeout(() => {
-                _routeIsLand = false; // default sea/air for reroutes
-                if (recRoute.mode === 'AIR') {
-                    _vehicleRawWps = recWaypoints.map((p, i) => ({ lat: p[0], lon: p[1], via: 'air', name: recRoute.waypoints?.[i] || '' }));
-                } else {
-                    _vehicleRawWps = recWaypoints.map((p, i) => ({ lat: p[0], lon: p[1], name: recRoute.waypoints?.[i] || '' }));
-                }
+                // Set transport mode for correct emoji handling
+                _currentTransportMode = (recRoute.mode || 'SEA').toLowerCase();
+                _routeIsLand = _currentTransportMode === 'road';
+                _vehicleRawWps = recWaypoints.map((p, i) => ({
+                    lat: p[0], lon: p[1],
+                    via: _currentTransportMode,
+                    name: recRoute.waypoints?.[i] || ''
+                }));
                 _currentWaypts = recWaypoints;
                 _vehiclePath   = _makeDensePath(recWaypoints, 60);
                 _totalRouteKm  = _calcKm(recWaypoints);
                 _startVehicleAnimation();
-                console.log('[reroute-sim] Animating on recommended route:', recRoute.route_id, recRoute.label);
+                console.log('[reroute-sim] Animating on recommended route:', recRoute.route_id, recRoute.label, 'mode:', _currentTransportMode);
             }, 1800);
         }
 
         // Update overlay
-        const modeEmoji = { AIR: '✈️', SEA: '🚢', MULTIMODAL: '🔄' }[recRoute.mode] || '📦';
+        const modeEmoji = { AIR: '✈️', SEA: '🚢', ROAD: '🚛', MULTIMODAL: '🔄' }[recRoute.mode] || '📦';
         setText('map-overlay-route-text', `🔀 ${routes.length} Reroutes Available`);
         setText('map-overlay-meta', `${modeEmoji} Best: ${escHtml(recRoute.label || '')} · ${recRoute.transit_days}d · $${(recRoute.cost_usd||0).toLocaleString()}`);
         showEl('map-overlay-card');
@@ -1746,3 +1795,135 @@ async function simulateReroutesOnMap(rerouteData, origin, destination) {
 window.simulateThreatOnMap   = simulateThreatOnMap;
 window.simulateReroutesOnMap = simulateReroutesOnMap;
 window.clearThreatMapLayers  = function() { _clearThreatLayers(); _clearRerouteLayers(); };
+
+// ── Store latest reroute data for individual playback ─────
+let _lastRerouteData = null;
+let _lastRerouteOrigin = '';
+let _lastRerouteDest   = '';
+
+// Wrap original to capture data
+const _origSimulateReroutesOnMap = simulateReroutesOnMap;
+window.simulateReroutesOnMap = function(data, origin, dest) {
+    _lastRerouteData   = data;
+    _lastRerouteOrigin = origin;
+    _lastRerouteDest   = dest;
+    return _origSimulateReroutesOnMap(data, origin, dest);
+};
+
+/**
+ * Play a specific reroute on the map:
+ *  - Clears existing reroute layers
+ *  - Draws ONLY the selected route as a thick, glowing line
+ *  - Animates vehicle on it
+ * @param {number} idx - index into rerouteData.routes[]
+ */
+async function playRerouteOnMap(idx) {
+    const data   = _lastRerouteData;
+    const origin = _lastRerouteOrigin;
+    const dest   = _lastRerouteDest;
+    if (!data || !data.routes || !data.routes[idx]) {
+        console.warn('[play-reroute] No reroute data at index', idx);
+        return;
+    }
+    whenMapReady(async () => {
+        _clearRerouteLayers();
+        _stopVehicle();
+
+        const route = data.routes[idx];
+        const modeColors = { AIR: '#a855f7', SEA: '#06b6d4', ROAD: '#f59e0b', MULTIMODAL: '#10b981' };
+        const color = modeColors[route.mode] || '#06b6d4';
+        const waypoints = route.waypoints || [];
+        if (waypoints.length < 2) return;
+
+        // Geocode waypoints
+        const coords = [];
+        for (const wp of waypoints) {
+            const c = await _geocodePlace(wp);
+            if (c) coords.push([c.lat, c.lon]);
+        }
+        const og = await _geocodePlace(origin);
+        const dg = await _geocodePlace(dest);
+        let fullPath = [];
+        if (og) fullPath.push([og.lat, og.lon]);
+        fullPath = fullPath.concat(coords);
+        if (dg) fullPath.push([dg.lat, dg.lon]);
+        if (fullPath.length < 2) return;
+
+        // Draw glow
+        const glow = L.polyline(fullPath, { color, weight: 18, opacity: 0.1 }).addTo(_bgMap);
+        _rerouteLayers.push(glow);
+
+        // Draw thick solid line
+        const line = L.polyline(fullPath, { color, weight: 5, opacity: 1 }).addTo(_bgMap);
+        _rerouteLayers.push(line);
+
+        // Route label at midpoint
+        const midIdx = Math.floor(fullPath.length / 2);
+        const modeEmoji = { AIR: '✈️', SEA: '🚢', ROAD: '🚛', MULTIMODAL: '🔄' }[route.mode] || '📦';
+        const riskColor = { LOW: '#4ade80', MEDIUM: '#fde68a', HIGH: '#f87171' }[route.risk_level] || '#aaa';
+        const labelHtml = `<div style="
+            background:rgba(12,12,24,0.92);
+            border:2px solid ${color};
+            border-radius:8px;padding:6px 12px;
+            font-size:10px;font-weight:700;color:${color};
+            white-space:nowrap;
+            box-shadow:0 0 16px ${color}66;
+        ">${modeEmoji} ${escHtml(route.label || route.route_id)}
+        <span style="color:#4ade80;margin-left:4px">▶ Playing</span>
+        <br><span style="color:${riskColor};font-weight:400">${route.risk_level} risk · ${route.transit_days}d · $${(route.cost_usd||0).toLocaleString()}</span></div>`;
+        const labelIcon = L.divIcon({
+            className: '', html: labelHtml,
+            iconSize: [220, 50], iconAnchor: [110, 25],
+        });
+        const labelMkr = L.marker(fullPath[midIdx], { icon: labelIcon, zIndexOffset: 2000 }).addTo(_bgMap);
+        _rerouteLayers.push(labelMkr);
+
+        // Fly to route
+        const bounds = L.latLngBounds(fullPath);
+        try { _bgMap.flyToBounds(bounds, { padding: [60, 60], duration: 1.2 }); } catch(e) {}
+
+        // Also draw dimmed other routes
+        for (let i = 0; i < data.routes.length; i++) {
+            if (i === idx) continue;
+            const other = data.routes[i];
+            const otherWps = other.waypoints || [];
+            if (otherWps.length < 2) continue;
+            const otherCoords = [];
+            for (const wp of otherWps) {
+                const c = await _geocodePlace(wp);
+                if (c) otherCoords.push([c.lat, c.lon]);
+            }
+            let otherPath = [];
+            if (og) otherPath.push([og.lat, og.lon]);
+            otherPath = otherPath.concat(otherCoords);
+            if (dg) otherPath.push([dg.lat, dg.lon]);
+            if (otherPath.length < 2) continue;
+            const otherColor = modeColors[other.mode] || '#888';
+            const dimLine = L.polyline(otherPath, { color: otherColor, weight: 1.5, opacity: 0.2, dashArray: '4,8' }).addTo(_bgMap);
+            _rerouteLayers.push(dimLine);
+        }
+
+        // Animate vehicle on selected route
+        setTimeout(() => {
+            _currentTransportMode = (route.mode || 'SEA').toLowerCase();
+            _routeIsLand = _currentTransportMode === 'road';
+            _vehicleRawWps = fullPath.map((p, i) => ({
+                lat: p[0], lon: p[1],
+                via: _currentTransportMode,
+                name: route.waypoints?.[i] || ''
+            }));
+            _currentWaypts = fullPath;
+            _vehiclePath   = _makeDensePath(fullPath, 60);
+            _totalRouteKm  = _calcKm(fullPath);
+            _startVehicleAnimation();
+            console.log('[play-reroute] Animating route index', idx, ':', route.label, 'mode:', _currentTransportMode);
+        }, 1000);
+
+        // Update overlay
+        setText('map-overlay-route-text', `▶ ${modeEmoji} ${escHtml(route.label || route.route_id)}`);
+        setText('map-overlay-meta', `${route.risk_level} risk · ${route.transit_days}d · $${(route.cost_usd||0).toLocaleString()}`);
+        showEl('map-overlay-card');
+    });
+}
+
+window.playRerouteOnMap = playRerouteOnMap;

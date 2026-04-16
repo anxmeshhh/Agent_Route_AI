@@ -63,7 +63,7 @@ def admin_required(f):
         if not payload:
             return jsonify({"error": "Token expired or invalid", "code": "INVALID_TOKEN"}), 401
 
-        if payload.get("role") != "admin":
+        if payload.get("role") not in ("admin", "superadmin"):
             return jsonify({"error": "Admin access required", "code": "FORBIDDEN"}), 403
 
         g.user_id = payload["sub"]
@@ -72,3 +72,30 @@ def admin_required(f):
         return f(*args, **kwargs)
 
     return decorated
+
+
+def superadmin_required(f):
+    """
+    Decorator: requires valid JWT + role == 'superadmin'.
+    Only system-wide administrators can access these endpoints.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = _extract_token()
+        if not token:
+            return jsonify({"error": "Authentication required", "code": "NO_TOKEN"}), 401
+
+        payload = verify_access_token(token)
+        if not payload:
+            return jsonify({"error": "Token expired or invalid", "code": "INVALID_TOKEN"}), 401
+
+        if payload.get("role") != "superadmin":
+            return jsonify({"error": "Super Admin access required", "code": "FORBIDDEN"}), 403
+
+        g.user_id = payload["sub"]
+        g.org_id  = payload["org"]
+        g.role    = payload.get("role", "user")
+        return f(*args, **kwargs)
+
+    return decorated
+
