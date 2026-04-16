@@ -1,20 +1,26 @@
 """
 app/__init__.py — Flask application factory
 """
+import os
 from flask import Flask
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from .config import Config
-from .database import init_db_pool, init_schema, close_db
-from .models import ref_data
+from app.backend.config import Config
+from app.backend.database import init_db_pool, init_schema, close_db
+from app.backend.models import ref_data
 
 
 def create_app():
+    # Resolve absolute paths to frontend assets
+    _here = os.path.dirname(os.path.abspath(__file__))
+    _tmpl = os.path.join(_here, "frontend", "templates")
+    _static = os.path.join(_here, "frontend", "static")
+
     app = Flask(
         __name__,
-        template_folder="templates",
-        static_folder="../static",
+        template_folder=_tmpl,
+        static_folder=_static,
         static_url_path="/static",
     )
     app.config.from_object(Config)
@@ -31,7 +37,8 @@ def create_app():
         init_schema(app)
         # Load all reference tables into memory after pool + schema are ready
         try:
-            ref_data.load_all(__import__('app.database', fromlist=['execute_query']).execute_query)
+            from app.backend.database import execute_query as _eq
+            ref_data.load_all(_eq)
             app.logger.info("Reference data cache loaded")
         except Exception as _e:
             app.logger.error(f"Reference data cache failed: {_e}")
@@ -39,8 +46,8 @@ def create_app():
     app.teardown_appcontext(close_db)
 
     # ── Blueprints ────────────────────────────────────────────
-    from .routes.main import main_bp
-    from .routes.api import api_bp
+    from app.backend.routes.main import main_bp
+    from app.backend.routes.api import api_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
@@ -82,3 +89,4 @@ def create_app():
         raise e
 
     return app
+
