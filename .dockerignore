@@ -3,6 +3,7 @@ __pycache__
 *.pyo
 .git
 .gitignore
+.env
 .env.local
 *.md
 new_html_files/
