@@ -1,380 +1,500 @@
-{% extends "base.html" %}
-{% block title %}AgentRoute AI — Land & Maritime AI Routing{% endblock %}
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Analysis | AgentRouteAI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+    tailwind.config = {
+        darkMode: "class",
+        theme: { extend: {
+            "colors": {
+                "surface-container-high":"#1d1f2b","on-primary-fixed":"#000000",
+                "surface-bright":"#2a2b3a","primary-container":"#b28cff",
+                "on-surface":"#f1effd","surface-variant":"#242532",
+                "on-primary":"#3c0089","surface-container-highest":"#242532",
+                "background":"#0d0e17","error":"#ff6e84",
+                "surface-container":"#181924","surface":"#0d0e17",
+                "secondary-dim":"#00caed","secondary":"#00d9ff",
+                "outline-variant":"#474752","primary-dim":"#8a4cfc",
+                "surface-container-low":"#12131d","on-background":"#f1effd",
+                "primary":"#bd9dff","secondary-container":"#00687b",
+                "outline":"#757480","on-surface-variant":"#abaab7",
+                "on-secondary":"#004755","tertiary":"#ffb148",
+                "error-container":"#a70138","on-error-container":"#ffb2b9"
+            },
+            "fontFamily":{"headline":["Inter"],"body":["Inter"],"mono":["JetBrains Mono"]}
+        }}
+    }
+</script>
+<style>
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .glass-panel { background: rgba(24, 25, 36, 0.7); backdrop-filter: blur(20px); }
+    .kinetic-gradient { background: linear-gradient(135deg, #00D9FF 0%, #7C3AED 100%); }
+    /* Pipeline nodes */
+    .pipeline-node { display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 6px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); transition:all 0.3s; min-width:56px; }
+    .pipeline-node.active { background:rgba(0,217,255,0.1); border-color:rgba(0,217,255,0.3); box-shadow:0 0 12px rgba(0,217,255,0.2); }
+    .pipeline-node.done { background:rgba(74,222,128,0.1); border-color:rgba(74,222,128,0.3); }
+    .node-icon { font-size:16px; }
+    .node-label { font-size:8px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#abaab7; }
+    .pipeline-node.active .node-label { color:#00d9ff; }
+    .pipeline-node.done .node-label { color:#4ade80; }
+    .node-line { width:16px; height:2px; background:rgba(255,255,255,0.08); flex-shrink:0; margin-top:12px; }
+    /* Map */
+    #world-map-bg { width:100%; height:100%; border-radius:12px; }
+    .leaflet-container { background:#0d0e17 !important; border-radius:12px; }
+    /* Agent log entries */
+    .agent-logs-container { overflow-y:auto; max-height:100%; }
+    .agent-logs-container::-webkit-scrollbar { width:4px; }
+    .agent-logs-container::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+    /* Tab system */
+    .result-tab { padding:6px 12px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; border-radius:6px; transition:all 0.2s; cursor:pointer; white-space:nowrap; }
+    .result-tab.active { background:rgba(0,217,255,0.15); color:#00d9ff; }
+    .result-tab:not(.active) { color:#757480; }
+    .result-tab:not(.active):hover { color:#abaab7; background:rgba(255,255,255,0.05); }
+    .tab-pane { display:none; }
+    .tab-pane.active { display:block; }
+    /* Floating overlays */
+    .map-floating-overlay { position:absolute; top:12px; right:12px; z-index:400; background:rgba(13,14,23,0.85); backdrop-filter:blur(8px); padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); max-width:280px; }
+    .ai-map-decision { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:400; background:rgba(138,76,252,0.15); backdrop-filter:blur(8px); padding:8px 16px; border-radius:8px; border:1px solid rgba(138,76,252,0.3); max-width:500px; }
+    .sim-speed-control { position:absolute; top:12px; left:12px; z-index:400; background:rgba(13,14,23,0.85); padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:8px; }
+    .mission-control-hud { position:absolute; bottom:0; left:0; right:0; z-index:400; background:rgba(13,14,23,0.9); backdrop-filter:blur(8px); border-top:1px solid rgba(255,255,255,0.08); padding:10px 16px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    /* Spinner */
+    .spin-ring { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    /* Risk colors */
+    .risk-critical { color:#ff6e84; } .risk-high { color:#ffb148; } .risk-medium { color:#facc15; } .risk-low { color:#4ade80; }
+    .risk-pill { font-size:10px; font-weight:700; padding:2px 8px; border-radius:4px; text-transform:uppercase; }
+    /* Hidden util */
+    .hidden { display:none !important; }
+    /* Log entry styles for main.js compatibility */
+    .log-entry { padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); margin-bottom:6px; font-size:11px; }
+    .log-agent-badge { font-size:9px; font-weight:700; padding:1px 6px; border-radius:3px; text-transform:uppercase; }
+    .log-text { color:#cbd5e1; line-height:1.4; margin-top:3px; }
+    .log-ts { font-size:9px; color:#757480; font-family:'JetBrains Mono',monospace; }
+    /* Confidence row */
+    .confidence-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(255,255,255,0.03); border-radius:6px; margin-top:6px; }
+    /* Agent pill for agents summary */
+    .agent-chip-done { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; background:rgba(74,222,128,0.1); color:#4ade80; border:1px solid rgba(74,222,128,0.2); }
+    /* Intel grid */
+    .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .intel-box { padding:8px; background:rgba(255,255,255,0.03); border-radius:6px; }
+    .intel-label { font-size:9px; color:#757480; text-transform:uppercase; letter-spacing:0.05em; }
+    .intel-val { font-size:13px; font-weight:700; margin-top:2px; }
+    /* Forecast card */
+    .forecast-card { padding:6px 8px; background:rgba(255,255,255,0.04); border-radius:6px; text-align:center; min-width:60px; font-size:10px; }
+    /* Factor item */
+    .factor-item { padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.03); border-left:3px solid; margin-bottom:6px; }
+    /* History item */
+    .history-item { padding:6px 8px; border-radius:6px; background:rgba(255,255,255,0.03); margin-bottom:4px; cursor:pointer; font-size:11px; display:flex; justify-content:space-between; align-items:center; }
+    .history-item:hover { background:rgba(255,255,255,0.06); }
+    /* Example chip */
+    .example-chip { padding:4px 10px; border-radius:16px; font-size:10px; font-weight:600; background:rgba(0,217,255,0.08); border:1px solid rgba(0,217,255,0.15); color:#00d9ff; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    .example-chip:hover { background:rgba(0,217,255,0.15); }
+    .example-chip.india { background:rgba(255,177,72,0.08); border-color:rgba(255,177,72,0.15); color:#ffb148; }
+    /* Route type btn */
+    .route-type-btn { padding:6px 14px; border-radius:6px; font-size:11px; font-weight:700; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); color:#abaab7; cursor:pointer; transition:all 0.2s; }
+    .route-type-btn.active { background:rgba(0,217,255,0.15); border-color:rgba(0,217,255,0.3); color:#00d9ff; }
+    /* Parallel agents */
+    .parallel-agents-row { display:flex; align-items:center; gap:6px; padding:6px 10px; background:rgba(138,76,252,0.08); border-radius:6px; margin-bottom:6px; }
+    .parallel-label { font-size:9px; font-weight:700; color:#bd9dff; }
+    /* AI decision banner */
+    .ai-decision-banner { padding:8px 12px; background:rgba(138,76,252,0.1); border-radius:8px; border:1px solid rgba(138,76,252,0.2); margin-bottom:8px; }
+    .ai-decision-label { font-size:9px; font-weight:700; color:#bd9dff; text-transform:uppercase; letter-spacing:0.08em; }
+    .ai-decision-text { font-size:11px; color:#e2e8f0; margin-top:2px; line-height:1.4; }
+    /* Modal */
+    .modal-overlay { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; }
+    .modal-card { background:#181924; border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:24px; max-width:400px; width:100%; }
+    /* Btn primary */
+    .btn-analyze { width:100%; padding:12px; border-radius:8px; font-weight:700; font-size:13px; border:none; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:8px; }
+    /* HUD labels */
+    .hud-label { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#757480; }
+    .hud-agent-name { font-size:12px; font-weight:700; color:#fff; }
+    .hud-agent-action { font-size:10px; color:#abaab7; margin-top:2px; }
+    .ship-progress-track { width:100%; height:6px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; margin-top:4px; }
+    .ship-progress-bar-fill { height:100%; background:linear-gradient(90deg,#00d9ff,#8a4cfc); border-radius:3px; width:0%; transition:width 0.3s; }
+    .hud-km-counter { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:#00d9ff; }
+    .btn-hud-sim { padding:6px 12px; border-radius:6px; font-size:10px; font-weight:700; background:rgba(0,217,255,0.15); color:#00d9ff; border:1px solid rgba(0,217,255,0.3); cursor:pointer; }
+    /* Overlay map badges */
+    .overlay-badge { font-size:9px; padding:2px 8px; border-radius:4px; font-weight:600; background:rgba(0,217,255,0.15); color:#00d9ff; }
+    .road-badge { background:rgba(255,177,72,0.15); color:#ffb148; }
+    .map-scan-overlay { position:absolute; inset:0; z-index:390; pointer-events:none; background:linear-gradient(transparent 50%, rgba(0,217,255,0.03) 50%); background-size:100% 4px; }
+    .hud-current-loc { display:flex; align-items:center; gap:4px; font-size:10px; color:#abaab7; margin-top:4px; }
+    /* Speed slider */
+    .sim-slider { width:60px; accent-color:#00d9ff; }
+    /* Org panels */
+    .org-list-compact, .org-select-list { max-height:120px; overflow-y:auto; }
+    .placeholder-text { font-size:11px; color:#757480; padding:8px 0; }
+</style>
+</head>
+<body class="bg-surface font-body text-on-surface overflow-hidden">
 
-{% block content %}
-<div class="dashboard-layout">
-
-    <!-- ═══ TOP HEADER ═══ -->
-    <header class="app-header">
-        <div class="header-left">
-            <div class="logo-icon">🗺</div>
-            <span class="logo-text">AgentRoute<span style="color:#818cf8">AI</span></span>
-            <span class="badge-agentic">AGENTIC</span>
+<!-- ═══ CONSISTENT HEADER ═══ -->
+<header class="fixed top-0 w-full z-50 bg-[#0D0E17]/70 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 h-14 shadow-[0_8px_32px_rgba(189,157,255,0.08)]">
+    <div class="flex items-center gap-8">
+        <a href="/" class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-violet-500 bg-clip-text text-transparent font-headline tracking-tight no-underline">AgentRouteAI</a>
+        <nav class="hidden md:flex gap-6">
+            <a class="font-semibold tracking-tight text-slate-400 hover:text-white transition-colors text-sm" href="/">Dashboard</a>
+            <a class="font-semibold tracking-tight text-slate-400 hover:text-white transition-colors text-sm" href="/logs">Logs</a>
+            <a class="font-semibold tracking-tight text-white border-b-2 border-cyan-400 pb-1 text-sm" href="/analysis">Analysis</a>
+        </nav>
+    </div>
+    <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg border border-white/5" id="user-chip">
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-secondary to-primary flex items-center justify-center text-[10px] font-bold text-white" id="user-chip-avatar">?</div>
+            <div class="hidden sm:block">
+                <div class="text-xs font-semibold text-on-surface leading-tight" id="user-chip-name">—</div>
+                <div class="text-[10px] text-outline leading-tight" id="user-chip-org">—</div>
+            </div>
+            <button type="button" id="logout-btn" class="ml-1 text-slate-500 hover:text-error transition-colors" title="Logout">
+                <span class="material-symbols-outlined text-base">logout</span>
+            </button>
         </div>
+    </div>
+</header>
 
-        <div class="header-center">
-            <div class="pipeline-wrap">
-                <div class="pipeline-node" data-agent="intake">
-                    <span class="node-icon">📦</span><span class="node-label">INTAKE</span>
-                </div><div class="node-line"></div>
-                <div class="pipeline-node" data-agent="router">
-                    <span class="node-icon">🧠</span><span class="node-label">ROUTER</span>
-                </div><div class="node-line"></div>
-                <div class="pipeline-node" data-agent="weather">
-                    <span class="node-icon">🌤</span><span class="node-label">WEATHER</span>
-                </div><div class="node-line"></div>
-                <div class="pipeline-node" data-agent="news">
-                    <span class="node-icon">📰</span><span class="node-label">NEWS</span>
-                </div><div class="node-line"></div>
-                <div class="pipeline-node" data-agent="historical">
-                    <span class="node-icon">📊</span><span class="node-label">HISTORY</span>
-                </div><div class="node-line"></div>
-                <div class="pipeline-node" data-agent="vessel">
-                    <span class="node-icon">🚗</span><span class="node-label">VEHICLE</span>
-                </div><div class="node-line"></div>
-                <div class="pipeline-node" data-agent="port_intel">
-                    <span class="node-icon">📍</span><span class="node-label">INTEL</span>
-                </div><div class="node-line"></div>
-                <div class="pipeline-node" data-agent="brain">
-                    <span class="node-icon">⚡</span><span class="node-label">BRAIN</span>
-                </div>
-            </div>
-            <div class="agent-progress-wrap">
-                <div class="agent-progress-bar">
-                    <div class="agent-progress-fill" id="agent-progress-fill"></div>
-                </div>
-                <span class="agent-progress-label" id="agent-progress-label">0/8 agents</span>
-                <span class="elapsed-timer" id="elapsed-timer">0.0s</span>
-            </div>
+<!-- ═══ AGENT PIPELINE BAR ═══ -->
+<div class="fixed top-14 w-full z-40 bg-[#12131D]/90 backdrop-blur-lg border-b border-white/5 px-4 py-2">
+    <div class="flex items-center justify-center gap-1">
+        <div class="flex items-center gap-1">
+            <div class="pipeline-node" data-agent="intake"><span class="node-icon">📦</span><span class="node-label">Intake</span></div>
+            <div class="node-line"></div>
+            <div class="pipeline-node" data-agent="router"><span class="node-icon">🧠</span><span class="node-label">Router</span></div>
+            <div class="node-line"></div>
+            <div class="pipeline-node" data-agent="weather"><span class="node-icon">🌤</span><span class="node-label">Weather</span></div>
+            <div class="node-line"></div>
+            <div class="pipeline-node" data-agent="news"><span class="node-icon">📰</span><span class="node-label">News</span></div>
+            <div class="node-line"></div>
+            <div class="pipeline-node" data-agent="historical"><span class="node-icon">📊</span><span class="node-label">History</span></div>
+            <div class="node-line"></div>
+            <div class="pipeline-node" data-agent="vessel"><span class="node-icon">🚗</span><span class="node-label">Vehicle</span></div>
+            <div class="node-line"></div>
+            <div class="pipeline-node" data-agent="port_intel"><span class="node-icon">📍</span><span class="node-label">Intel</span></div>
+            <div class="node-line"></div>
+            <div class="pipeline-node" data-agent="brain"><span class="node-icon">⚡</span><span class="node-label">Brain</span></div>
         </div>
-
-        <div class="header-right">
-            <span class="system-status"><span class="status-dot"></span> System Online</span>
-            <!-- User Chip (populated by JS after /api/auth/me) -->
-            <div class="user-chip hidden" id="user-chip">
-                <div class="user-chip-avatar" id="user-chip-avatar">?</div>
-                <div class="user-chip-info">
-                    <div class="user-chip-name" id="user-chip-name">—</div>
-                    <div class="user-chip-org" id="user-chip-org">—</div>
-                </div>
-                <button type="button" class="user-chip-logout" id="logout-btn" title="Logout">⏻</button>
+        <div class="ml-4 flex items-center gap-3">
+            <div class="w-32 h-1.5 bg-surface-container rounded-full overflow-hidden">
+                <div class="h-full kinetic-gradient transition-all duration-500" style="width:0%" id="agent-progress-fill"></div>
             </div>
+            <span class="text-[10px] font-mono text-outline" id="agent-progress-label">0/8 agents</span>
+            <span class="text-[10px] font-mono text-secondary" id="elapsed-timer">0.0s</span>
         </div>
-    </header>
-
-    <!-- ═══ MAIN CONTENT ═══ -->
-    <main class="main-grid">
-
-        <!-- ════════════════════════════════════ LEFT SIDEBAR ════════════════════════════════════ -->
-        <aside class="sidebar sidebar-left">
-
-            <!-- Query Card — fixed height, never grows -->
-            <div class="panel-card sidebar-query-card">
-                <div class="panel-header">
-                    <span class="panel-icon orange-bg">🗺</span>
-                    <div>
-                        <h2 class="panel-title">Route Intelligence Query</h2>
-                        <div class="panel-subtitle">Land · Maritime · AI-powered routing</div>
-                    </div>
-                </div>
-
-                <div class="route-type-row">
-                    <button type="button" class="route-type-btn active road" id="btn-land" onclick="setRouteType('land')">🚗 Road</button>
-                    <button type="button" class="route-type-btn sea"          id="btn-sea"  onclick="setRouteType('sea')">🚢 Maritime</button>
-                    <button type="button" class="route-type-btn air"          id="btn-air"  onclick="setRouteType('air')">✈ Air</button>
-                </div>
-
-                <form id="analysis-form">
-                    <textarea id="query-input" class="query-textarea" rows="3"
-                        placeholder="e.g. 'Container shipment from Shanghai to Rotterdam via sea in 28 days'"></textarea>
-
-                    <div class="chip-row" id="example-chips">
-                        <button type="button" class="example-chip india" data-query="Pharmaceutical shipment from Delhi to Thiruvananthapuram Kerala in 3 days urgent">🇮🇳 Delhi→Kerala</button>
-                        <button type="button" class="example-chip india" data-query="Electronics cargo from Mumbai to Bangalore by road in 2 days">🇮🇳 Mumbai→Bangalore</button>
-                        <button type="button" class="example-chip india" data-query="General cargo from Delhi to Kolkata by road NH19 in 48 hours">🇮🇳 Delhi→Kolkata</button>
-                        <button type="button" class="example-chip"       data-query="Electronics from Shanghai to Rotterdam via Suez Canal 28 days transit">🌊 Shanghai→Rotterdam</button>
-                        <button type="button" class="example-chip"       data-query="Automotive parts from Hamburg to Mumbai in 14 days maritime">🌊 Hamburg→Mumbai</button>
-                    </div>
-
-                    <button type="submit" id="analyze-btn" class="btn-primary">
-                        <span id="btn-text">⚡ Analyse &amp; Simulate Route</span>
-                        <span id="btn-spinner" class="spin-ring hidden"></span>
-                    </button>
-                </form>
-            </div>
-
-            <!-- Live Agent Reasoning — FILLS remaining space, independent scroll -->
-            <div class="panel-card sidebar-reasoning-card">
-                <div class="panel-header">
-                    <span class="panel-icon pink-bg">🧠</span>
-                    <div style="flex:1;min-width:0;">
-                        <h2 class="panel-title">Live Agent Reasoning</h2>
-                        <div class="panel-subtitle" id="running-current-action">Idle — awaiting query</div>
-                    </div>
-                    <button type="button" class="icon-btn" id="clear-logs-btn" title="Clear logs">✕</button>
-                </div>
-
-                <!-- AI Decision Banner -->
-                <div class="ai-decision-banner hidden" id="ai-decision-banner">
-                    <div class="ai-decision-label">⚡ AI Route Decision</div>
-                    <div class="ai-decision-text" id="ai-decision-text">—</div>
-                </div>
-
-                <!-- Parallel agents indicator -->
-                <div class="parallel-agents-row hidden" id="parallel-agents-row">
-                    <span class="parallel-label">🔀 PARALLEL</span>
-                    <div class="parallel-agent-chips" id="parallel-chips"></div>
-                </div>
-
-                <!-- Log entries with its own scroll -->
-                <div class="agent-logs-container" id="agent-log-entries">
-                    <div class="log-empty-state" id="log-empty">
-                        <span class="empty-icon">🗺</span>
-                        <div class="empty-title">Agentic AI Ready</div>
-                        <div class="empty-sub">Submit a query to watch 8 agents reason in real-time</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Analyses — FIXED height, never expands -->
-            <div class="panel-card sidebar-history-card">
-                <div class="panel-header" style="margin-bottom:6px;">
-                    <span class="panel-icon teal-bg">📋</span>
-                    <h2 class="panel-title">Recent Analyses</h2>
-                    <button type="button" id="refresh-history" class="icon-btn ml-auto" title="Refresh">↺</button>
-                </div>
-                <div class="history-list-compact" id="history-list">
-                    <div class="placeholder-text">No recent analyses</div>
-                </div>
-            </div>
-
-            <!-- Org Visibility Panel — cross-org analyses -->
-            <div class="panel-card sidebar-org-panel hidden" id="org-visibility-panel">
-                <div class="panel-header" style="margin-bottom:6px;">
-                    <span class="panel-icon" style="background:rgba(250,204,21,0.15);color:#facc15;">🌐</span>
-                    <h2 class="panel-title" style="font-size:11px;">Partner Orgs</h2>
-                    <button type="button" id="request-visibility-btn" class="icon-btn ml-auto"
-                            title="Request org access" onclick="openVisibilityModal()">+</button>
-                </div>
-                <div class="org-list-compact" id="org-analysis-list">
-                    <div class="placeholder-text">No partner orgs yet</div>
-                </div>
-            </div>
-
-        </aside>
-
-        <!-- Org Visibility Request Modal -->
-        <div class="modal-overlay hidden" id="visibility-modal">
-            <div class="modal-card">
-                <div class="modal-header">
-                    <h3 class="modal-title">🌐 Request Org Visibility</h3>
-                    <button type="button" class="modal-close" onclick="closeVisibilityModal()">✕</button>
-                </div>
-                <p class="modal-sub">Select an organisation to request access to their analyses. Their admin must approve.</p>
-                <div class="org-select-list" id="modal-org-list">
-                    <div class="placeholder-text">Loading organisations…</div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="auth-alt-btn" onclick="closeVisibilityModal()">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-
-        <!-- ════════════════════════════════════ CENTER MAP ════════════════════════════════════ -->
-        <section class="map-section">
-            <div id="world-map-bg"></div>
-
-            <!-- Scan-line overlay -->
-            <div class="map-scan-overlay hidden" id="map-scan-line"></div>
-
-            <!-- AI Decision overlay (center-top) -->
-            <div class="ai-map-decision hidden" id="ai-map-decision">
-                <div class="ai-map-decision-label">⚡ Route Decision</div>
-                <div class="ai-map-decision-text" id="ai-map-decision-text">—</div>
-            </div>
-
-            <!-- Route overlay card (top-right) -->
-            <div class="map-floating-overlay hidden" id="map-overlay-card">
-                <div class="overlay-route" id="map-overlay-route-text">—</div>
-                <div class="overlay-meta"  id="map-overlay-meta">—</div>
-                <div style="margin-top:5px;display:flex;gap:5px;align-items:center;">
-                    <span class="overlay-badge hidden" id="map-route-badge"></span>
-                    <span class="overlay-badge hidden road-badge" id="map-km-badge"></span>
-                </div>
-            </div>
-
-            <!-- Simulation Speed Control (top-left of map) -->
-            <div class="sim-speed-control hidden" id="sim-speed-control">
-                <span class="sim-speed-label">🚗 Speed</span>
-                <input type="range" id="sim-speed-slider" min="1" max="5" value="3" class="sim-slider">
-                <span class="sim-speed-val" id="sim-speed-val">3×</span>
-            </div>
-
-            <!-- MISSION CONTROL HUD -->
-            <div class="mission-control-hud hidden" id="mission-control-hud">
-                <div class="hud-left">
-                    <span class="hud-label">ACTIVE AGENT</span>
-                    <div class="hud-agent-row">
-                        <span class="hud-agent-icon" id="hud-agent-icon">⚙</span>
-                        <span class="hud-agent-name" id="hud-agent-name">SYSTEM</span>
-                        <span class="hud-dot" id="hud-status-dot"></span>
-                    </div>
-                    <div class="hud-agent-action" id="hud-agent-action">Idle</div>
-                </div>
-
-                <div class="hud-center">
-                    <span class="hud-label">ROUTE PROGRESS</span>
-                    <div class="ship-progress-track">
-                        <div class="ship-progress-bar-fill" id="ship-progress-bar"></div>
-                    </div>
-                    <div class="hud-route-stats">
-                        <span class="ship-progress-label" id="ship-progress-label">0% en route</span>
-                        <span class="hud-km-counter" id="hud-km-counter">0 km</span>
-                    </div>
-                    <!-- Current location badge -->
-                    <div class="hud-current-loc hidden" id="hud-current-loc">
-                        <span class="hud-loc-icon">📍</span>
-                        <span class="hud-loc-text" id="hud-loc-text">—</span>
-                    </div>
-                </div>
-
-                <div class="hud-right">
-                    <span class="hud-label">ACTIONS</span>
-                    <button type="button" class="btn-hud-sim hidden" id="simulate-btn" onclick="runShipSimulation()">▶ Replay Route</button>
-                    <div class="hud-coords" id="hud-coords">🌍 Route Analysis Active</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ════════════════════════════════════ RIGHT SIDEBAR ════════════════════════════════════ -->
-        <aside class="sidebar sidebar-right">
-
-            <!-- Brand Card (shown before results) -->
-            <div class="panel-card text-center brand-panel" id="brand-panel">
-                <div class="large-shield">🗺</div>
-                <h1 class="brand-title">AgentRoute<span class="text-blue">AI</span></h1>
-                <div class="brand-subtitle">8-Agent Agentic Route Intelligence</div>
-
-                <div class="agent-pills-grid gap-top">
-                    <span class="agent-pill intake">📦 Intake</span>
-                    <span class="agent-pill weather">🌤 Weather</span>
-                    <span class="agent-pill news">📰 News</span>
-                    <span class="agent-pill history">📊 Historical</span>
-                    <span class="agent-pill vessel">🚗 Vehicle</span>
-                    <span class="agent-pill port">📍 Route Intel</span>
-                    <span class="agent-pill geo">🌍 Geopolitical</span>
-                </div>
-                <div class="gap-top"><span class="agent-pill brain">⚡ LLM Brain</span></div>
-
-                <div class="feature-checks gap-top">
-                    <span><span class="dot pink"></span>LLM-Routed</span>
-                    <span><span class="dot cyan"></span>Cross-Validated</span>
-                    <span><span class="dot purple"></span>Memory</span>
-                </div>
-
-                <div class="brand-cta gap-top">
-                    Try <strong>Delhi → Kerala</strong> or <strong>Shanghai → Rotterdam</strong><br>
-                    to see AI routing + simulation
-                </div>
-            </div>
-
-            <!-- Results State (replaces brand after analysis) -->
-            <div class="results-container hidden" id="results-state">
-
-                <!-- KPI Score -->
-                <div class="panel-card">
-                    <div class="panel-header">
-                        <span class="panel-icon blue-bg">📊</span>
-                        <h2 class="panel-title">Risk Assessment</h2>
-                        <span class="risk-pill ml-auto" id="risk-level-badge">--</span>
-                    </div>
-                    <div class="kpi-row">
-                        <div class="kpi-score">
-                            <span class="score-val" id="gauge-score">0</span><span class="score-den">/100</span>
-                        </div>
-                        <div class="kpi-meta">
-                            <div>ETA: <span class="text-white" id="risk-eta">--</span></div>
-                            <div>Cargo: <span class="text-white" id="risk-cargo">--</span></div>
-                            <div>Mode: <span class="text-white" id="risk-mode">--</span></div>
-                        </div>
-                    </div>
-                    <!-- Risk Explanation + Probability -->
-                    <div class="risk-explanation-row" id="risk-explanation-row" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:8px;border-left:3px solid var(--text-dim);">
-                        <div id="risk-explanation" style="font-size:11px;color:#e2e8f0;line-height:1.4;">--</div>
-                        <div style="margin-top:4px;font-size:10px;color:var(--text-dim);">Disruption Probability: <span class="text-white" style="font-weight:600;" id="risk-probability">--</span></div>
-                    </div>
-                    <div class="confidence-row hidden" id="confidence-row">
-                        <span class="conf-label">AI Confidence</span>
-                        <span class="conf-val" id="confidence-val">--</span>
-                    </div>
-                </div>
-
-                <!-- Agents completed summary -->
-                <div class="panel-card panel-small" id="agents-summary-card">
-                    <div class="section-title">Agents Executed</div>
-                    <div class="agents-summary-row" id="agents-summary-row"></div>
-                </div>
-
-                <!-- Route Intelligence -->
-                <div class="panel-card hidden" id="route-intel-strip">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                        <h3 class="section-title" style="margin:0">Route Intelligence</h3>
-                        <span id="intel-data-source" style="font-size:9px;color:var(--text-dim);font-family:monospace;"></span>
-                    </div>
-                    <div class="intel-grid">
-                        <div class="intel-box">
-                            <div class="intel-label">Delay Cost Est.</div>
-                            <div class="intel-val text-orange" id="strip-cost">—</div>
-                        </div>
-                        <div class="intel-box">
-                            <div class="intel-label">Delay Prob.</div>
-                            <div class="intel-val text-orange" id="strip-delay-prob">—</div>
-                        </div>
-                        <div class="intel-box">
-                            <div class="intel-label">Opt. Departure</div>
-                            <div class="intel-val text-green" id="strip-depart">—</div>
-                            <div style="font-size:9px;margin-top:2px;" id="strip-depart-rec"></div>
-                        </div>
-                        <div class="intel-box">
-                            <div class="intel-label">Alt. Route</div>
-                            <div class="intel-val text-cyan" id="strip-alt-route">—</div>
-                        </div>
-                    </div>
-                    <!-- 5-Day OWM Weather Forecast (populated by JS) -->
-                    <div id="owm-forecast-row" style="display:none;margin-top:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">
-                        <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">
-                            📡 5-Day Destination Forecast
-                        </div>
-                        <div id="owm-forecast-cards" style="display:flex;gap:5px;overflow-x:auto;"></div>
-                    </div>
-                </div>
-
-                <!-- Risk Factors -->
-                <div class="panel-card">
-                    <h3 class="section-title">Critical Risk Factors</h3>
-                    <div class="factors-list" id="factors-list"></div>
-                </div>
-
-                <!-- Decision Synthesis -->
-                <div class="panel-card">
-                    <h3 class="section-title">Decision Synthesis</h3>
-                    <div class="reasoning-text" id="decision-synthesis-text" style="font-size:12px;line-height:1.5;color:#e2e8f0;"></div>
-                    <div id="trade-offs-row" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(99,102,241,0.08);border-radius:6px;border-left:3px solid #818cf8;">
-                        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:#818cf8;margin-bottom:4px;">⚖ Trade-offs</div>
-                        <div id="trade-offs-text" style="font-size:11px;color:#cbd5e1;line-height:1.4;"></div>
-                    </div>
-                </div>
-
-                <!-- Alt Route Comparison -->
-                <div class="panel-card hidden" id="alt-route-comparison">
-                    <h3 class="section-title">Route Comparison</h3>
-                    <div id="alt-route-comparison-content" style="font-size:11px;"></div>
-                </div>
-
-            </div><!-- /results-state -->
-        </aside>
-
-    </main>
+    </div>
 </div>
-{% endblock %}
+
+<!-- ═══ MAIN 3-COLUMN LAYOUT ═══ -->
+<div class="fixed inset-0 pt-[104px] flex" style="height:100vh;">
+
+    <!-- LEFT PANEL: Query + Live Reasoning -->
+    <aside class="w-[320px] flex-shrink-0 flex flex-col border-r border-white/5 bg-surface-container-low overflow-hidden">
+
+        <!-- Query Card -->
+        <div class="p-4 border-b border-white/5 flex-shrink-0">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-secondary text-lg">alt_route</span>
+                <div>
+                    <h2 class="text-sm font-bold text-white">Route Intelligence Query</h2>
+                    <div class="text-[10px] text-outline">Land · Maritime · AI-powered routing</div>
+                </div>
+            </div>
+
+            <div class="flex gap-2 mb-3 route-type-row">
+                <button type="button" class="route-type-btn active" id="btn-land" onclick="setRouteType('land')">🚗 Road</button>
+                <button type="button" class="route-type-btn" id="btn-sea" onclick="setRouteType('sea')">🚢 Maritime</button>
+                <button type="button" class="route-type-btn" id="btn-air" onclick="setRouteType('air')">✈ Air</button>
+            </div>
+
+            <form id="analysis-form">
+                <textarea id="query-input" class="w-full bg-surface-container-highest border-none focus:ring-1 focus:ring-secondary/50 rounded-lg p-3 text-sm text-on-surface placeholder:text-outline/50 resize-none" rows="2"
+                    placeholder="e.g. 'Container from Delhi to Kerala in 3 days'"></textarea>
+                <div class="flex flex-wrap gap-1.5 mt-2 mb-3" id="example-chips">
+                    <button type="button" class="example-chip india" data-query="Pharmaceutical shipment from Delhi to Thiruvananthapuram Kerala in 3 days urgent">🇮🇳 Delhi→Kerala</button>
+                    <button type="button" class="example-chip india" data-query="Electronics cargo from Mumbai to Bangalore by road in 2 days">🇮🇳 Mumbai→BLR</button>
+                    <button type="button" class="example-chip india" data-query="General cargo from Delhi to Kolkata by road NH19 in 48 hours">🇮🇳 Delhi→Kolkata</button>
+                    <button type="button" class="example-chip" data-query="Electronics from Shanghai to Rotterdam via Suez Canal 28 days transit">🌊 Shanghai→Rotterdam</button>
+                </div>
+                <button type="submit" id="analyze-btn" class="btn-analyze kinetic-gradient text-white">
+                    <span id="btn-text">⚡ Analyse & Simulate Route</span>
+                    <span id="btn-spinner" class="spin-ring hidden"></span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Live Agent Reasoning -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-2 border-b border-white/5 flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-sm">psychology</span>
+                    <h2 class="text-xs font-bold text-white uppercase tracking-wider">Live Agent Reasoning</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] text-outline" id="running-current-action">Idle</span>
+                    <button type="button" id="clear-logs-btn" class="text-slate-500 hover:text-white transition-colors" title="Clear">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI Decision Banner -->
+            <div class="ai-decision-banner hidden mx-4 mt-2" id="ai-decision-banner">
+                <div class="ai-decision-label">⚡ AI Route Decision</div>
+                <div class="ai-decision-text" id="ai-decision-text">—</div>
+            </div>
+
+            <!-- Parallel agents -->
+            <div class="parallel-agents-row hidden mx-4 mt-2" id="parallel-agents-row">
+                <span class="parallel-label">🔀 PARALLEL</span>
+                <div class="flex gap-1 flex-wrap" id="parallel-chips"></div>
+            </div>
+
+            <!-- Log entries -->
+            <div class="agent-logs-container flex-1 overflow-y-auto px-4 py-2" id="agent-log-entries">
+                <div id="log-empty" class="text-center py-8">
+                    <span class="material-symbols-outlined text-3xl text-outline block mb-2">alt_route</span>
+                    <div class="text-sm font-bold text-on-surface-variant">Agentic AI Ready</div>
+                    <div class="text-[10px] text-outline">Submit a query to watch 8 agents reason in real-time</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Analyses (compact) -->
+        <div class="border-t border-white/5 flex-shrink-0">
+            <div class="flex items-center justify-between px-4 py-2">
+                <h3 class="text-[10px] font-bold text-outline uppercase tracking-wider">Recent Analyses</h3>
+                <button type="button" id="refresh-history" class="text-slate-500 hover:text-white transition-colors" title="Refresh">
+                    <span class="material-symbols-outlined text-sm">refresh</span>
+                </button>
+            </div>
+            <div class="px-4 pb-3 max-h-[100px] overflow-y-auto" id="history-list">
+                <div class="placeholder-text">No recent analyses</div>
+            </div>
+        </div>
+
+        <!-- Org Visibility (compact, hidden by default) -->
+        <div class="border-t border-white/5 flex-shrink-0 hidden" id="org-visibility-panel">
+            <div class="flex items-center justify-between px-4 py-2">
+                <h3 class="text-[10px] font-bold text-outline uppercase tracking-wider">Partner Orgs</h3>
+                <button type="button" id="request-visibility-btn" class="text-slate-500 hover:text-white" onclick="openVisibilityModal()">
+                    <span class="material-symbols-outlined text-sm">add</span>
+                </button>
+            </div>
+            <div class="px-4 pb-3 org-list-compact" id="org-analysis-list">
+                <div class="placeholder-text">No partner orgs yet. Click + to request.</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Visibility Modal -->
+    <div class="modal-overlay hidden" id="visibility-modal">
+        <div class="modal-card">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-white">🌐 Request Org Visibility</h3>
+                <button type="button" onclick="closeVisibilityModal()" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined text-sm">close</span></button>
+            </div>
+            <p class="text-xs text-outline mb-3">Select an organisation to request access.</p>
+            <div class="org-select-list" id="modal-org-list"><div class="placeholder-text">Loading…</div></div>
+            <button type="button" class="mt-3 px-4 py-2 bg-surface-container-high text-on-surface rounded-lg text-xs w-full" onclick="closeVisibilityModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- CENTER: MAP -->
+    <section class="flex-1 relative overflow-hidden">
+        <div id="world-map-bg"></div>
+
+        <div class="map-scan-overlay hidden" id="map-scan-line"></div>
+
+        <div class="ai-map-decision hidden" id="ai-map-decision">
+            <div style="font-size:9px;font-weight:700;color:#bd9dff;text-transform:uppercase;letter-spacing:0.08em;">⚡ Route Decision</div>
+            <div style="font-size:11px;color:#e2e8f0;margin-top:2px;" id="ai-map-decision-text">—</div>
+        </div>
+
+        <div class="map-floating-overlay hidden" id="map-overlay-card">
+            <div class="text-xs font-bold text-white" id="map-overlay-route-text">—</div>
+            <div class="text-[10px] text-outline mt-1" id="map-overlay-meta">—</div>
+            <div class="flex gap-1 mt-1">
+                <span class="overlay-badge hidden" id="map-route-badge"></span>
+                <span class="overlay-badge road-badge hidden" id="map-km-badge"></span>
+            </div>
+        </div>
+
+        <div class="sim-speed-control hidden" id="sim-speed-control">
+            <span class="text-[10px] font-bold text-outline">🚗 Speed</span>
+            <input type="range" id="sim-speed-slider" min="1" max="5" value="3" class="sim-slider">
+            <span class="text-[10px] font-mono text-secondary" id="sim-speed-val">3×</span>
+        </div>
+
+        <!-- MISSION CONTROL HUD -->
+        <div class="mission-control-hud hidden" id="mission-control-hud">
+            <div>
+                <span class="hud-label">ACTIVE AGENT</span>
+                <div class="flex items-center gap-2 mt-1">
+                    <span id="hud-agent-icon">⚙</span>
+                    <span class="hud-agent-name" id="hud-agent-name">SYSTEM</span>
+                    <span class="w-2 h-2 rounded-full bg-secondary" id="hud-status-dot"></span>
+                </div>
+                <div class="hud-agent-action" id="hud-agent-action">Idle</div>
+            </div>
+            <div class="flex-1 max-w-xs">
+                <span class="hud-label">ROUTE PROGRESS</span>
+                <div class="ship-progress-track mt-1"><div class="ship-progress-bar-fill" id="ship-progress-bar"></div></div>
+                <div class="flex items-center justify-between mt-1">
+                    <span class="text-[10px] text-outline" id="ship-progress-label">0% en route</span>
+                    <span class="hud-km-counter" id="hud-km-counter">0 km</span>
+                </div>
+                <div class="hud-current-loc hidden" id="hud-current-loc">
+                    <span>📍</span><span id="hud-loc-text">—</span>
+                </div>
+            </div>
+            <div>
+                <span class="hud-label">ACTIONS</span>
+                <button type="button" class="btn-hud-sim hidden mt-1" id="simulate-btn" onclick="runShipSimulation()">▶ Replay Route</button>
+                <div class="text-[10px] text-outline mt-1" id="hud-coords">🌍 Route Analysis Active</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RIGHT PANEL: TABBED RESULTS -->
+    <aside class="w-[340px] flex-shrink-0 flex flex-col border-l border-white/5 bg-surface-container-low overflow-hidden">
+
+        <!-- Brand panel (shown before results) -->
+        <div class="flex-1 flex flex-col items-center justify-center p-6 text-center" id="brand-panel">
+            <div class="text-5xl mb-4">🗺</div>
+            <h1 class="text-xl font-bold text-white mb-1">AgentRoute<span class="text-primary">AI</span></h1>
+            <div class="text-xs text-outline mb-4">8-Agent Agentic Route Intelligence</div>
+            <div class="flex flex-wrap gap-1.5 justify-center mb-4">
+                <span class="text-[9px] px-2 py-0.5 rounded bg-secondary/10 text-secondary border border-secondary/20">📦 Intake</span>
+                <span class="text-[9px] px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">🌤 Weather</span>
+                <span class="text-[9px] px-2 py-0.5 rounded bg-tertiary/10 text-tertiary border border-tertiary/20">📰 News</span>
+                <span class="text-[9px] px-2 py-0.5 rounded bg-secondary/10 text-secondary border border-secondary/20">📊 Historical</span>
+                <span class="text-[9px] px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">🚗 Vehicle</span>
+                <span class="text-[9px] px-2 py-0.5 rounded bg-tertiary/10 text-tertiary border border-tertiary/20">📍 Intel</span>
+                <span class="text-[9px] px-2 py-0.5 rounded bg-secondary/10 text-secondary border border-secondary/20">🌍 Geo</span>
+            </div>
+            <div class="text-[9px] px-3 py-1 rounded kinetic-gradient text-white font-bold mb-3">⚡ LLM Brain</div>
+            <div class="text-[10px] text-outline">Try <strong class="text-secondary">Delhi → Kerala</strong> or <strong class="text-primary">Shanghai → Rotterdam</strong></div>
+        </div>
+
+        <!-- Results (replaces brand) -->
+        <div class="hidden flex-1 flex flex-col overflow-hidden" id="results-state">
+
+            <!-- Tab Bar -->
+            <div class="flex gap-1 px-3 pt-3 pb-2 border-b border-white/5 overflow-x-auto flex-shrink-0" id="result-tabs">
+                <button class="result-tab active" onclick="switchTab('risk')">Risk</button>
+                <button class="result-tab" onclick="switchTab('intel')">Intel</button>
+                <button class="result-tab" onclick="switchTab('factors')">Factors</button>
+                <button class="result-tab" onclick="switchTab('decision')">Decision</button>
+                <button class="result-tab" onclick="switchTab('routes')">Routes</button>
+            </div>
+
+            <!-- Tab Content (scrollable) -->
+            <div class="flex-1 overflow-y-auto p-3 space-y-3">
+
+                <!-- TAB: Risk Assessment -->
+                <div class="tab-pane active" id="tab-risk">
+                    <div class="glass-panel p-4 rounded-xl border border-white/5">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-secondary">shield</span>
+                                <h2 class="text-sm font-bold text-white">Risk Assessment</h2>
+                            </div>
+                            <span class="risk-pill" id="risk-level-badge" style="background:rgba(255,255,255,0.05);color:#757480;">--</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div>
+                                <span class="text-4xl font-bold text-white font-mono" id="gauge-score">0</span><span class="text-lg text-outline">/100</span>
+                            </div>
+                            <div class="text-xs space-y-1 text-on-surface-variant">
+                                <div>ETA: <span class="text-white font-semibold" id="risk-eta">--</span></div>
+                                <div>Cargo: <span class="text-white font-semibold" id="risk-cargo">--</span></div>
+                                <div>Mode: <span class="text-white font-semibold" id="risk-mode">--</span></div>
+                            </div>
+                        </div>
+                        <div id="risk-explanation-row" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:8px;border-left:3px solid #757480;">
+                            <div id="risk-explanation" class="text-[11px] text-on-surface-variant leading-relaxed">--</div>
+                            <div class="text-[10px] text-outline mt-1">Disruption Probability: <span class="text-white font-semibold" id="risk-probability">--</span></div>
+                        </div>
+                        <div class="confidence-row hidden" id="confidence-row">
+                            <span class="text-[10px] text-outline">AI Confidence</span>
+                            <span class="text-xs font-bold text-secondary" id="confidence-val">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Agents Executed -->
+                    <div class="glass-panel p-3 rounded-xl border border-white/5 mt-3" id="agents-summary-card">
+                        <div class="text-[10px] font-bold text-outline uppercase tracking-wider mb-2">Agents Executed</div>
+                        <div class="flex flex-wrap gap-1" id="agents-summary-row"></div>
+                    </div>
+                </div>
+
+                <!-- TAB: Route Intelligence -->
+                <div class="tab-pane" id="tab-intel">
+                    <div class="glass-panel p-4 rounded-xl border border-white/5" id="route-intel-strip">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-white">Route Intelligence</h3>
+                            <span id="intel-data-source" class="text-[9px] text-outline font-mono"></span>
+                        </div>
+                        <div class="intel-grid">
+                            <div class="intel-box"><div class="intel-label">Delay Cost Est.</div><div class="intel-val text-tertiary" id="strip-cost">—</div></div>
+                            <div class="intel-box"><div class="intel-label">Delay Prob.</div><div class="intel-val text-tertiary" id="strip-delay-prob">—</div></div>
+                            <div class="intel-box"><div class="intel-label">Opt. Departure</div><div class="intel-val text-secondary" id="strip-depart">—</div><div class="text-[9px] mt-1" id="strip-depart-rec"></div></div>
+                            <div class="intel-box"><div class="intel-label">Alt. Route</div><div class="intel-val text-primary" id="strip-alt-route">—</div></div>
+                        </div>
+                        <div id="owm-forecast-row" style="display:none;margin-top:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">
+                            <div class="text-[9px] text-outline uppercase tracking-wider mb-2">📡 5-Day Destination Forecast</div>
+                            <div id="owm-forecast-cards" class="flex gap-1 overflow-x-auto"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Critical Factors -->
+                <div class="tab-pane" id="tab-factors">
+                    <div class="glass-panel p-4 rounded-xl border border-white/5">
+                        <h3 class="text-sm font-bold text-white mb-3">Critical Risk Factors</h3>
+                        <div id="factors-list"></div>
+                    </div>
+                </div>
+
+                <!-- TAB: Decision Synthesis -->
+                <div class="tab-pane" id="tab-decision">
+                    <div class="glass-panel p-4 rounded-xl border border-white/5">
+                        <h3 class="text-sm font-bold text-white mb-3">Decision Synthesis</h3>
+                        <div class="text-xs text-on-surface-variant leading-relaxed" id="decision-synthesis-text"></div>
+                        <div id="trade-offs-row" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(138,76,252,0.08);border-radius:6px;border-left:3px solid #8a4cfc;">
+                            <div class="text-[9px] text-primary-dim uppercase tracking-wider mb-1">⚖ Trade-offs</div>
+                            <div id="trade-offs-text" class="text-[11px] text-on-surface-variant leading-relaxed"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Route Comparison -->
+                <div class="tab-pane" id="tab-routes">
+                    <div class="glass-panel p-4 rounded-xl border border-white/5 hidden" id="alt-route-comparison">
+                        <h3 class="text-sm font-bold text-white mb-3">Route Comparison</h3>
+                        <div id="alt-route-comparison-content" class="text-xs"></div>
+                    </div>
+                    <div class="text-center py-8 text-outline text-xs" id="no-routes-msg">Run an analysis to see route comparisons</div>
+                </div>
+
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tabId)?.classList.add('active');
+    event.target.classList.add('active');
+}
+</script>
+
+<!-- main.js with ALL the logic -->
+<script src="{{ url_for('static', filename='js/main.js') }}?v=900"></script>
+</body></html>
