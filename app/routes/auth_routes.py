@@ -160,8 +160,16 @@ def _send_otp_email(to_email: str, otp: str, display_name: str) -> bool:
         msg.attach(MIMEText(text, "plain"))
         msg.attach(MIMEText(html,  "html"))
 
+        # ALWAYS print to terminal — guaranteed fallback for demo
+        logger.warning(
+            f"\n{'='*60}\n"
+            f"  OTP for {display_name} <{to_email[:6]}...>: {otp}\n"
+            f"{'='*60}"
+        )
+
         with smtplib.SMTP(cfg.get("SMTP_HOST", "smtp.gmail.com"),
-                          int(cfg.get("SMTP_PORT", 587))) as server:
+                          int(cfg.get("SMTP_PORT", 587)),
+                          timeout=10) as server:
             server.ehlo()
             server.starttls()
             server.login(smtp_user, smtp_pass)
