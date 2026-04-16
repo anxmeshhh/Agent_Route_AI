@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#1d1f2b",
+                    "on-primary-fixed": "#000000",
+                    "inverse-surface": "#fbf8ff",
+                    "on-secondary": "#004755",
+                    "surface-bright": "#2a2b3a",
+                    "secondary-fixed": "#6ce1ff",
+                    "primary-container": "#b28cff",
+                    "on-error-container": "#ffb2b9",
+                    "error-dim": "#d73357",
+                    "on-surface": "#f1effd",
+                    "tertiary-fixed": "#f8a010",
+                    "surface-variant": "#242532",
+                    "on-tertiary-fixed": "#2a1700",
+                    "inverse-on-surface": "#54545f",
+                    "on-secondary-fixed-variant": "#005969",
+                    "on-primary": "#3c0089",
+                    "inverse-primary": "#742fe5",
+                    "surface-container-lowest": "#000000",
+                    "surface-container-highest": "#242532",
+                    "on-secondary-container": "#ecfaff",
+                    "primary-fixed": "#b28cff",
+                    "on-secondary-fixed": "#003a46",
+                    "background": "#0d0e17",
+                    "error": "#ff6e84",
+                    "surface-container": "#181924",
+                    "surface": "#0d0e17",
+                    "on-tertiary": "#573500",
+                    "secondary-dim": "#00caed",
+                    "on-tertiary-container": "#4a2c00",
+                    "secondary": "#00d9ff",
+                    "surface-dim": "#0d0e17",
+                    "outline-variant": "#474752",
+                    "on-primary-fixed-variant": "#390083",
+                    "tertiary-dim": "#e79400",
+                    "on-primary-container": "#2e006c",
+                    "tertiary-fixed-dim": "#e79400",
+                    "tertiary": "#ffb148",
+                    "secondary-fixed-dim": "#00d6fb",
+                    "primary-fixed-dim": "#a67aff",
+                    "error-container": "#a70138",
+                    "outline": "#757480",
+                    "tertiary-container": "#f8a010",
+                    "on-surface-variant": "#abaab7",
+                    "on-tertiary-fixed-variant": "#563400",
+                    "surface-tint": "#bd9dff",
+                    "primary-dim": "#8a4cfc",
+                    "surface-container-low": "#12131d",
+                    "on-background": "#f1effd",
+                    "primary": "#bd9dff",
+                    "on-error": "#490013",
+                    "secondary-container": "#00687b"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"],
+                    "mono": ["JetBrains Mono"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(24, 25, 36, 0.7);
+            backdrop-filter: blur(20px);
+        }
+        .kinetic-gradient {
+            background: linear-gradient(135deg, #00D9FF 0%, #7C3AED 100%);
+        }
+        body {
+            background-color: #0D0E17;
+            color: #f1effd;
+        }
+    </style>
+</head>
+<body class="font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-[#0D0E17]/70 backdrop-blur-xl border-b border-white/5 shadow-[0_8px_32px_rgba(189,157,255,0.08)]">
+<div class="flex items-center justify-between px-6 h-16 w-full max-w-full">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-violet-500 bg-clip-text text-transparent font-['Inter'] tracking-tight">AgentRouteAI</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-slate-400 font-semibold font-['Inter'] hover:text-white transition-colors duration-200" href="#">Dashboard</a>
+<a class="text-slate-400 font-semibold font-['Inter'] hover:text-white transition-colors duration-200" href="#">Logs</a>
+<a class="text-white border-b-2 border-cyan-400 pb-1 font-semibold font-['Inter']" href="#">Analysis</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-slate-400 hover:text-white transition-colors active:scale-95 transition-transform" data-icon="dark_mode">dark_mode</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-white/10">
+<img alt="User Avatar" class="h-full w-full object-cover" data-alt="close-up professional portrait of a tech executive with soft rim lighting and a blurred office background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbE3KYki7q4COjwKoXpBxIdD1l5h-HRWxq5G-GQWoeyD9S6agVsXUb1KWBsFRKkXLKi3yKYyGFPadIMsKjgD0DYyTS2CB-F4uaejXqj7tv-_09kImfIKhedEKqBRSSEmsY933iwW-LpJ7-zdVXofLs_v_ZodT3FODzKByR0I4WQGM1zSL4VLMygpPHFdAGa_IS3957lO-i84Yq0lc4_wEBVhCkYG83GOoZld2B5OUaxCe4s8YXooEfP7W1XUi7EQwDRxg-dC-NBs8"/>
+</div>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 z-40 bg-[#12131D] flex flex-col pt-20 pb-6 border-r border-white/5">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg kinetic-gradient flex items-center justify-center shadow-lg shadow-cyan-500/20">
+<span class="material-symbols-outlined text-white" data-icon="psychology" data-weight="fill" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<div>
+<h2 class="text-lg font-bold text-white leading-tight">Kinetic Intel</h2>
+<span class="text-[10px] uppercase tracking-widest text-cyan-400 font-bold">System Active</span>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-white/5 hover:text-slate-200 transition-all hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="text-sm font-['Inter'] tracking-wide">Fleet</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-white/5 hover:text-slate-200 transition-all hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="text-sm font-['Inter'] tracking-wide">Intelligence</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-white/5 hover:text-slate-200 transition-all hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="alt_route">alt_route</span>
+<span class="text-sm font-['Inter'] tracking-wide">Routes</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-white/5 hover:text-slate-200 transition-all hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="text-sm font-['Inter'] tracking-wide">Archive</span>
+</a>
+</nav>
+<div class="px-4 mb-6">
+<button class="w-full kinetic-gradient text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-violet-500/20 active:scale-95 transition-transform">
+                Deploy Agent
+            </button>
+</div>
+<div class="mt-auto pt-4 border-t border-white/5">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-white/5 hover:text-slate-200 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-sm font-['Inter'] tracking-wide">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:bg-white/5 hover:text-slate-200 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-sm font-['Inter'] tracking-wide">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="pl-64 pt-16 min-h-screen">
+<div class="p-8 max-w-[1600px] mx-auto space-y-8">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="text-3xl font-bold tracking-tight text-white font-headline">Analysis Explorer</h1>
+<p class="text-slate-400 mt-1">Real-time intelligence auditing across active fleet nodes.</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface-container hover:bg-surface-bright text-on-surface px-4 py-2 rounded-lg flex items-center gap-2 border border-white/5 transition-all">
+<span class="material-symbols-outlined text-lg" data-icon="filter_list">filter_list</span>
+<span class="text-sm font-medium">Filters</span>
+</button>
+<button class="bg-surface-container hover:bg-surface-bright text-on-surface px-4 py-2 rounded-lg flex items-center gap-2 border border-white/5 transition-all">
+<span class="material-symbols-outlined text-lg" data-icon="download">download</span>
+<span class="text-sm font-medium">Export</span>
+</button>
+</div>
+</div>
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Stat Card 1 -->
+<div class="glass-panel p-6 rounded-xl border border-white/5 shadow-lg group hover:translate-y-[-4px] transition-all">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary-container/10 rounded-lg">
+<span class="material-symbols-outlined text-primary" data-icon="analytics">analytics</span>
+</div>
+<span class="text-xs font-bold text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="trending_up">trending_up</span> 12%
+                        </span>
+</div>
+<p class="text-slate-400 text-sm font-medium">Total Analyses</p>
+<h3 class="text-2xl font-bold text-white mt-1 font-mono">1,284</h3>
+</div>
+<!-- Stat Card 2 -->
+<div class="glass-panel p-6 rounded-xl border border-white/5 shadow-lg group hover:translate-y-[-4px] transition-all">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-error-container/10 rounded-lg">
+<span class="material-symbols-outlined text-error" data-icon="warning">warning</span>
+</div>
+<span class="text-xs font-bold text-error flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="trending_down">trending_down</span> 0.4
+                        </span>
+</div>
+<p class="text-slate-400 text-sm font-medium">Avg Risk Score</p>
+<h3 class="text-2xl font-bold text-white mt-1 font-mono">2.4/10</h3>
+</div>
+<!-- Stat Card 3 -->
+<div class="glass-panel p-6 rounded-xl border border-white/5 shadow-lg group hover:translate-y-[-4px] transition-all">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-secondary-container/10 rounded-lg">
+<span class="material-symbols-outlined text-secondary" data-icon="speed">speed</span>
+</div>
+<span class="text-xs font-bold text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="bolt">bolt</span> Fast
+                        </span>
+</div>
+<p class="text-slate-400 text-sm font-medium">Inference Latency</p>
+<h3 class="text-2xl font-bold text-white mt-1 font-mono">142ms</h3>
+</div>
+<!-- Stat Card 4 -->
+<div class="glass-panel p-6 rounded-xl border border-white/5 shadow-lg group hover:translate-y-[-4px] transition-all">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-tertiary-container/10 rounded-lg">
+<span class="material-symbols-outlined text-tertiary" data-icon="hub">hub</span>
+</div>
+<span class="text-xs font-bold text-tertiary flex items-center gap-1">
+                            Active
+                        </span>
+</div>
+<p class="text-slate-400 text-sm font-medium">Active Agents</p>
+<h3 class="text-2xl font-bold text-white mt-1 font-mono">48</h3>
+</div>
+</div>
+<!-- Main Interactive Section -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Trend Chart Placeholder -->
+<div class="col-span-12 lg:col-span-8 space-y-8">
+<div class="glass-panel p-8 rounded-xl border border-white/5 min-h-[400px] flex flex-col">
+<div class="flex items-center justify-between mb-8">
+<h2 class="text-xl font-bold text-white">Route Efficiency Trends</h2>
+<div class="flex bg-surface-container p-1 rounded-lg">
+<button class="px-4 py-1.5 text-xs font-bold rounded-md bg-surface-bright text-white shadow-sm">24h</button>
+<button class="px-4 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-white transition-colors">7d</button>
+<button class="px-4 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-white transition-colors">30d</button>
+</div>
+</div>
+<div class="flex-1 relative flex items-end gap-2 pb-6">
+<!-- Faux Chart Columns to represent kinetic intelligence -->
+<div class="flex-1 bg-gradient-to-t from-primary-dim/20 to-primary-dim/40 h-[40%] rounded-t-lg relative group">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-surface-bright px-2 py-1 rounded text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">72%</div>
+</div>
+<div class="flex-1 bg-gradient-to-t from-primary-dim/20 to-primary-dim/40 h-[55%] rounded-t-lg relative group"></div>
+<div class="flex-1 bg-gradient-to-t from-primary-dim/20 to-primary-dim/40 h-[45%] rounded-t-lg relative group"></div>
+<div class="flex-1 bg-gradient-to-t from-cyan-400/20 to-cyan-400/40 h-[80%] rounded-t-lg relative group border-t-2 border-cyan-400 shadow-[0_0_20px_rgba(0,217,255,0.2)]">
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-surface-bright px-2 py-1 rounded text-[10px] font-mono text-white opacity-100">94%</div>
+</div>
+<div class="flex-1 bg-gradient-to-t from-primary-dim/20 to-primary-dim/40 h-[60%] rounded-t-lg relative group"></div>
+<div class="flex-1 bg-gradient-to-t from-primary-dim/20 to-primary-dim/40 h-[35%] rounded-t-lg relative group"></div>
+<div class="flex-1 bg-gradient-to-t from-primary-dim/20 to-primary-dim/40 h-[50%] rounded-t-lg relative group"></div>
+<div class="flex-1 bg-gradient-to-t from-primary-dim/20 to-primary-dim/40 h-[70%] rounded-t-lg relative group"></div>
+</div>
+<div class="flex justify-between border-t border-white/5 pt-4 text-[10px] font-mono text-slate-500 tracking-widest uppercase">
+<span>00:00</span>
+<span>04:00</span>
+<span>08:00</span>
+<span>12:00</span>
+<span>16:00</span>
+<span>20:00</span>
+<span>23:59</span>
+</div>
+</div>
+<!-- History Table -->
+<div class="glass-panel rounded-xl border border-white/5 overflow-hidden">
+<div class="p-6 border-b border-white/5 flex items-center justify-between">
+<h2 class="text-xl font-bold text-white">Past Analyses</h2>
+<span class="text-xs font-mono text-slate-500 uppercase tracking-tighter">Updated: 2m ago</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-container/50">
+<tr>
+<th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Analysis ID</th>
+<th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Target Node</th>
+<th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Complexity</th>
+<th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Risk Score</th>
+<th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<tr class="hover:bg-surface-bright/30 transition-colors cursor-pointer group">
+<td class="px-6 py-4 font-mono text-sm text-cyan-400">#ANA-2941-X</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+<span class="text-sm font-medium">Berlin-Gateway-04</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-slate-400">Moderate</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-secondary h-full w-[20%]"></div>
+</div>
+<span class="text-xs font-mono">1.2</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded bg-secondary-container/20 text-secondary text-[10px] font-bold uppercase">Complete</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-bright/30 transition-colors cursor-pointer group">
+<td class="px-6 py-4 font-mono text-sm text-cyan-400">#ANA-2940-Y</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+<span class="text-sm font-medium">Tokyo-Edge-North</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-slate-400">High</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-error h-full w-[85%]"></div>
+</div>
+<span class="text-xs font-mono text-error">8.5</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded bg-error-container/20 text-error text-[10px] font-bold uppercase">Escalated</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-bright/30 transition-colors cursor-pointer group">
+<td class="px-6 py-4 font-mono text-sm text-cyan-400">#ANA-2939-A</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-amber-400"></div>
+<span class="text-sm font-medium">SF-Central-Hub</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-slate-400">Low</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-secondary h-full w-[45%]"></div>
+</div>
+<span class="text-xs font-mono">4.1</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded bg-surface-variant text-slate-400 text-[10px] font-bold uppercase">Processing</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Side Panel (Deep Dive Details) -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<div class="glass-panel p-8 rounded-xl border border-white/5 sticky top-24">
+<div class="flex items-center justify-between mb-8">
+<h2 class="text-xl font-bold text-white">System Reasoning</h2>
+<span class="material-symbols-outlined text-slate-500 hover:text-white cursor-pointer" data-icon="open_in_new">open_in_new</span>
+</div>
+<div class="relative pl-6 space-y-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-outline-variant/20">
+<!-- Reasoning Node 1 -->
+<div class="relative">
+<div class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-2 border-surface-container bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]"></div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 text-xs font-mono text-slate-500">
+<span>14:32:01.04</span>
+<span class="w-1 h-1 rounded-full bg-slate-700"></span>
+<span class="text-cyan-400">INITIALIZATION</span>
+</div>
+<p class="text-sm text-on-surface leading-relaxed">
+                                        Targeting <span class="font-mono text-cyan-400">#ANA-2940-Y</span>. AI Agent Alpha-09 initiated deep-packet inspection of Tokyo-Edge-North routing tables.
+                                    </p>
+</div>
+</div>
+<!-- Reasoning Node 2 -->
+<div class="relative">
+<div class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-2 border-surface-container bg-error shadow-[0_0_8px_rgba(255,110,132,0.5)]"></div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 text-xs font-mono text-slate-500">
+<span>14:32:04.88</span>
+<span class="w-1 h-1 rounded-full bg-slate-700"></span>
+<span class="text-error">ANOMALY DETECTED</span>
+</div>
+<p class="text-sm text-on-surface leading-relaxed">
+                                        Latency variance exceeded threshold by <span class="text-error font-bold">342%</span>. Identifying probable packet looping in Node-B cluster.
+                                    </p>
+</div>
+</div>
+<!-- Reasoning Node 3 -->
+<div class="relative">
+<div class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-2 border-surface-container bg-tertiary"></div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 text-xs font-mono text-slate-500">
+<span>14:32:12.11</span>
+<span class="w-1 h-1 rounded-full bg-slate-700"></span>
+<span class="text-tertiary">SIMULATION</span>
+</div>
+<p class="text-sm text-on-surface leading-relaxed">
+                                        Running 1,000 synthetic reroute permutations. Predictive success rate for reroute via Hokkaido pathway: <span class="font-bold text-white">89.4%</span>.
+                                    </p>
+</div>
+</div>
+</div>
+<div class="mt-12 p-4 rounded-lg bg-surface-container-high/50 border border-white/5 space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Confidence Score</span>
+<span class="text-lg font-mono font-bold text-white">99.8%</span>
+</div>
+<div class="w-full h-2 bg-background rounded-full overflow-hidden">
+<div class="h-full kinetic-gradient w-[99.8%]"></div>
+</div>
+<button class="w-full py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded uppercase tracking-widest border border-white/10 transition-all">
+                                View Full Kernel Log
+                            </button>
+</div>
+<div class="mt-8">
+<h4 class="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">Involved Entities</h4>
+<div class="flex -space-x-2">
+<img alt="Entity 1" class="w-8 h-8 rounded-full border-2 border-[#12131D]" data-alt="minimalist 3d avatar of a digital persona with neon accents" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBob-f0c4whmDDu0eKumDuE9L3IeiszyOhJDrCv1i4EKHI4JikCOD4kuQoY0LOfAlY5A_gyKlSaCWNtaEsslvdSrjT0QVOmczJCQ_hdEbjZdyIHLgbcPSDPktVuE_Qxqt7CA4L4QIR3d0ItlBxhXlKculYhn_OaVy9KtozfVVBpY4OHamf_RuuV5_p-8omKOBoYPVfm-vlWxtg4UWNQRlmj5_toCyMcTJF1nQuJg16jyM-JIHU6rWGLMiIYiWIl8zzK9JYtUddOLlw"/>
+<img alt="Entity 2" class="w-8 h-8 rounded-full border-2 border-[#12131D]" data-alt="minimalist 3d avatar of a digital persona with blue holographic light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzW4-ugtrQylzpvI3rLb9H5Rm5sbzqo0rt6m-htqzwVk5dUIRykZqMG4Qv-yCCRcrjosv0NyRVy5nV0f8p4GGsnicpddR_7JHERBPnGrN-Jv-Q6InoqHvL-cf94XZNuZtTCAhEzJUAvXrq_bvJTzhmy71NVMIOWeQYQX4sNbpnq9IRv-BxEqtFns85eyRUh9CgOsFsHFFgqSk0ZSekHTT055O9i1SOV_V4LzKU07hclGr0e8UaP9dyD-dYxHlGs2ZJMZwaTpNU6-k"/>
+<img alt="Entity 3" class="w-8 h-8 rounded-full border-2 border-[#12131D]" data-alt="minimalist 3d avatar of a digital persona with purple glow" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeuZN4YcqK1vGqFO-eMQy-3hMcYjmma9-Dc8vsfvCOKy-x6e1WVsm0px7r2Z6_4sJ99mxFlXzgcY84_yjq0Wb5WM-f-ZKJIKg8VgcbZ60sHooKouL09O_HU4gQi-AbYnZJBpfU2F1xkjzK7OObSqscBmONlp8jjhaVWOFhPAYwF_kiOk8Glkz7K4lAIuweH3ACzOChQC4p_OXSh1FKCmST5LWcoV29dIT3SLCeem8-_IUxXSRQUnnQVvIV7COL2176sMLKJTya_aA"/>
+<div class="w-8 h-8 rounded-full border-2 border-[#12131D] bg-surface-container flex items-center justify-center text-[10px] font-bold text-slate-400">+12</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating UI Element for Status -->
+<div class="fixed bottom-8 right-8 z-50">
+<div class="glass-panel px-4 py-3 rounded-full border border-white/10 shadow-2xl flex items-center gap-3 animate-pulse">
+<div class="w-2 h-2 rounded-full bg-cyan-400"></div>
+<span class="text-xs font-bold text-white uppercase tracking-tighter">Live Analysis Sync Active</span>
+<div class="h-4 w-[1px] bg-white/10 mx-1"></div>
+<span class="text-xs font-mono text-cyan-400">v4.2.0-stable</span>
+</div>
+</div>
+</body></html>

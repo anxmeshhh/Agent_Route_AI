@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Login | AgentRouteAI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#1d1f2b",
+                    "on-primary-fixed": "#000000",
+                    "inverse-surface": "#fbf8ff",
+                    "on-secondary": "#004755",
+                    "surface-bright": "#2a2b3a",
+                    "secondary-fixed": "#6ce1ff",
+                    "primary-container": "#b28cff",
+                    "on-error-container": "#ffb2b9",
+                    "error-dim": "#d73357",
+                    "on-surface": "#f1effd",
+                    "tertiary-fixed": "#f8a010",
+                    "surface-variant": "#242532",
+                    "on-tertiary-fixed": "#2a1700",
+                    "inverse-on-surface": "#54545f",
+                    "on-secondary-fixed-variant": "#005969",
+                    "on-primary": "#3c0089",
+                    "inverse-primary": "#742fe5",
+                    "surface-container-lowest": "#000000",
+                    "surface-container-highest": "#242532",
+                    "on-secondary-container": "#ecfaff",
+                    "primary-fixed": "#b28cff",
+                    "on-secondary-fixed": "#003a46",
+                    "background": "#0d0e17",
+                    "error": "#ff6e84",
+                    "surface-container": "#181924",
+                    "surface": "#0d0e17",
+                    "on-tertiary": "#573500",
+                    "secondary-dim": "#00caed",
+                    "on-tertiary-container": "#4a2c00",
+                    "secondary": "#00d9ff",
+                    "surface-dim": "#0d0e17",
+                    "outline-variant": "#474752",
+                    "on-primary-fixed-variant": "#390083",
+                    "tertiary-dim": "#e79400",
+                    "on-primary-container": "#2e006c",
+                    "tertiary-fixed-dim": "#e79400",
+                    "tertiary": "#ffb148",
+                    "secondary-fixed-dim": "#00d6fb",
+                    "primary-fixed-dim": "#a67aff",
+                    "error-container": "#a70138",
+                    "outline": "#757480",
+                    "tertiary-container": "#f8a010",
+                    "on-surface-variant": "#abaab7",
+                    "on-tertiary-fixed-variant": "#563400",
+                    "surface-tint": "#bd9dff",
+                    "primary-dim": "#8a4cfc",
+                    "surface-container-low": "#12131d",
+                    "on-background": "#f1effd",
+                    "primary": "#bd9dff",
+                    "on-error": "#490013",
+                    "secondary-container": "#00687b"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(24, 25, 36, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .mesh-gradient {
+            background-color: #0d0e17;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(189, 157, 255, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(0, 217, 255, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(189, 157, 255, 0.1) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(0, 217, 255, 0.1) 0px, transparent 50%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body min-h-screen flex flex-col selection:bg-primary/30">
+<!-- Theme Toggle (Top Right) -->
+<div class="fixed top-6 right-6 z-50">
+<button class="p-2 rounded-full glass-panel border border-white/5 hover:bg-white/10 transition-all active:scale-95 flex items-center justify-center text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined" data-icon="dark_mode">dark_mode</span>
+</button>
+</div>
+<!-- Main Content Area -->
+<main class="flex-grow flex items-center justify-center p-4 mesh-gradient relative overflow-hidden">
+<!-- Abstract Kinetic Background Elements -->
+<div class="absolute inset-0 pointer-events-none opacity-20">
+<div class="absolute top-[20%] left-[15%] w-96 h-96 bg-primary-dim rounded-full blur-[120px]"></div>
+<div class="absolute bottom-[20%] right-[15%] w-96 h-96 bg-secondary-container rounded-full blur-[120px]"></div>
+</div>
+<!-- Login Card -->
+<div class="w-full max-w-[440px] z-10">
+<div class="glass-panel p-8 md:p-10 rounded-xl border border-white/10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)]">
+<!-- Brand Anchor -->
+<div class="flex flex-col items-center mb-8">
+<div class="w-12 h-12 mb-4 bg-gradient-to-br from-secondary to-primary rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(0,217,255,0.3)]">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="alt_route" style="font-variation-settings: 'FILL' 1;">alt_route</span>
+</div>
+<h1 class="text-2xl font-bold tracking-tight text-on-surface bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">AgentRouteAI</h1>
+<p class="text-on-surface-variant text-sm mt-1">Intelligence in Motion</p>
+</div>
+<div class="space-y-6">
+<div class="space-y-2">
+<h2 class="text-xl font-semibold text-on-surface">Welcome back</h2>
+<p class="text-on-surface-variant text-sm">Access your intelligence fleet dashboard.</p>
+</div>
+<!-- Form Section -->
+<form class="space-y-4">
+<!-- Email Input -->
+<div class="space-y-1.5">
+<label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider ml-1">Email Address</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-secondary transition-colors" data-icon="envelope">mail_outline</span>
+<input class="w-full bg-surface-container-highest border-none focus:ring-0 rounded-lg py-3.5 pl-12 pr-4 text-on-surface placeholder:text-outline transition-all focus:bg-surface-bright shadow-inner" placeholder="name@company.com" type="email"/>
+<div class="absolute bottom-0 left-0 h-[2px] w-0 bg-secondary transition-all duration-300 group-focus-within:w-full"></div>
+</div>
+</div>
+<!-- Password Input -->
+<div class="space-y-1.5">
+<div class="flex justify-between items-center px-1">
+<label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Password</label>
+<a class="text-xs font-semibold text-secondary hover:text-secondary-fixed transition-colors" href="#">Forgot?</a>
+</div>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-secondary transition-colors" data-icon="lock">lock</span>
+<input class="w-full bg-surface-container-highest border-none focus:ring-0 rounded-lg py-3.5 pl-12 pr-12 text-on-surface placeholder:text-outline transition-all focus:bg-surface-bright shadow-inner" placeholder="••••••••" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-xl" data-icon="visibility">visibility</span>
+</button>
+<div class="absolute bottom-0 left-0 h-[2px] w-0 bg-secondary transition-all duration-300 group-focus-within:w-full"></div>
+</div>
+</div>
+<!-- Sign In Button -->
+<button class="w-full py-4 rounded-lg bg-gradient-to-r from-secondary to-primary text-on-primary-fixed font-bold tracking-wide transition-all hover:brightness-110 active:scale-[0.98] shadow-[0_8px_24px_rgba(0,217,255,0.2)] mt-2" type="submit">
+                            Sign In
+                        </button>
+</form>
+<!-- Divider -->
+<div class="relative flex items-center py-2">
+<div class="flex-grow border-t border-white/5"></div>
+<span class="flex-shrink mx-4 text-xs font-semibold text-outline uppercase tracking-widest">Or continue with</span>
+<div class="flex-grow border-t border-white/5"></div>
+</div>
+<!-- Social Login -->
+<button class="w-full py-3.5 rounded-lg bg-surface-container-high border border-white/5 text-on-surface font-semibold flex items-center justify-center gap-3 hover:bg-surface-bright transition-all active:scale-[0.98]">
+<svg class="w-5 h-5" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+</svg>
+                        Google
+                    </button>
+<p class="text-center text-sm text-on-surface-variant">
+                        New to the platform? <a class="text-primary font-semibold hover:underline" href="#">Request Access</a>
+</p>
+</div>
+</div>
+<!-- Footer Metadata (Hardware Style) -->
+<div class="mt-8 flex justify-between items-center px-4">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse shadow-[0_0_8px_rgba(0,217,255,1)]"></span>
+<span class="font-['JetBrains_Mono'] text-[10px] text-outline uppercase tracking-widest">System Protocol v4.2.0-STABLE</span>
+</div>
+<div class="flex gap-4">
+<a class="font-['JetBrains_Mono'] text-[10px] text-outline hover:text-on-surface-variant transition-colors uppercase" href="#">Privacy</a>
+<a class="font-['JetBrains_Mono'] text-[10px] text-outline hover:text-on-surface-variant transition-colors uppercase" href="#">Terms</a>
+</div>
+</div>
+</div>
+<!-- Decorative UI Element (Asymmetric Data Node) -->
+<div class="hidden xl:block absolute left-20 bottom-20 max-w-xs space-y-4">
+<div class="glass-panel p-4 rounded-lg border border-white/5 shadow-xl">
+<div class="flex justify-between items-start mb-3">
+<div class="p-2 bg-secondary-container/20 rounded text-secondary">
+<span class="material-symbols-outlined text-lg" data-icon="psychology" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<span class="text-[10px] font-['JetBrains_Mono'] text-secondary uppercase bg-secondary/10 px-2 py-0.5 rounded">Real-time Opt</span>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Neural paths connecting 4,209 nodes in the kinetic fleet network. Latency stabilized at 12ms.</p>
+<div class="mt-3 h-1 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-secondary to-primary w-2/3"></div>
+</div>
+</div>
+</div>
+<div class="hidden xl:block absolute right-20 top-32 max-w-[200px]">
+<div class="glass-panel p-4 rounded-lg border border-white/5 transform rotate-2">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+<span class="text-[10px] font-['JetBrains_Mono'] text-outline uppercase tracking-tighter">Route Conflict Resolved</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full bg-white/5 rounded"></div>
+<div class="h-1.5 w-4/5 bg-white/5 rounded"></div>
+<div class="h-1.5 w-3/4 bg-white/5 rounded"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Security Notification -->
+<footer class="p-6 text-center">
+<p class="text-[10px] text-outline uppercase tracking-[0.2em] opacity-60">
+            Encrypted End-to-End • Kinetic Intelligence Core • © 2024 Kinetic Intel
+        </p>
+</footer>
+</body></html>
