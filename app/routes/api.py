@@ -5,11 +5,6 @@ All API endpoints are implemented in dedicated route modules.
 This file creates the parent `api_bp` Blueprint and registers
 every child Blueprint onto it.
 
-The public import path remains:
-    from .routes.api import api_bp
-
-so app/__init__.py needs ZERO changes.
-
 Endpoints (all under /api prefix):
   POST /api/analyze          — analyze_routes
   GET  /api/stream/<sid>     — stream_routes
@@ -20,8 +15,7 @@ Endpoints (all under /api prefix):
   POST /api/feedback         — feedback_routes
   GET  /api/tools            — tools_routes
   GET  /api/route            — route_engine
-  GET  /api/route-analysis   — route_engine
-  POST /api/auth/...         — auth_routes  (NEW: organisation-based auth)
+  POST /api/auth/...         — auth_routes (organisation-based auth + OTP MFA)
 """
 from flask import Blueprint
 
