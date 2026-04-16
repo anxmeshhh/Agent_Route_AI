@@ -260,7 +260,29 @@ def signup():
         (org_id, display_name, e_enc, e_hash, p_hash)
     )
 
-    # ── Issue tokens immediately (no OTP on first signup) ─────
+    # ── OTP or direct token depending on config ─────────────────
+    otp_enabled = current_app.config.get("OTP_ENABLED", False)
+    if otp_enabled:
+        # Send OTP — JWT issued ONLY after OTP is verified
+        otp = _make_otp()
+        otp_expires = datetime.now(timezone.utc) + timedelta(minutes=5)
+        execute_query(
+            "INSERT INTO mfa_otp (user_id, otp_code, expires_at) VALUES (%s, %s, %s)",
+            (user_id, otp, otp_expires.strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        try:
+            plain_email = decrypt_email(e_enc)
+            _send_otp_email(plain_email, otp, display_name)
+        except Exception as ex:
+            logger.warning(f"Signup OTP email failed: {ex}")
+
+        return jsonify({
+            "message": "Organisation created! Check your email for the OTP.",
+            "otp_required": True,
+            "user_id": user_id,
+        }), 201
+
+    # OTP disabled — issue tokens directly (for dev/testing)
     access_token = generate_access_token(user_id, org_id, "admin")
     raw_refresh, refresh_hash = generate_refresh_token()
 
@@ -275,6 +297,7 @@ def signup():
 
     resp = make_response(jsonify({
         "message": "Organisation created successfully",
+        "otp_required": False,
         "user": {
             "id": user_id,
             "display_name": display_name,
@@ -371,12 +394,12 @@ def verify_otp():
     if not user_id or not otp_code:
         return jsonify({"error": "user_id and otp_code required"}), 400
 
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    # Use MySQL NOW() to avoid Python-UTC vs MySQL-localtime mismatch
     rows = execute_query(
         """SELECT id FROM mfa_otp
-           WHERE user_id=%s AND otp_code=%s AND used=0 AND expires_at > %s
+           WHERE user_id=%s AND otp_code=%s AND used=0 AND expires_at > NOW()
            ORDER BY created_at DESC LIMIT 1""",
-        (user_id, otp_code, now), fetch=True
+        (user_id, otp_code), fetch=True
     )
 
     if not rows:
