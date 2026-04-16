@@ -265,10 +265,10 @@ def signup():
     if otp_enabled:
         # Send OTP — JWT issued ONLY after OTP is verified
         otp = _make_otp()
-        otp_expires = datetime.now(timezone.utc) + timedelta(minutes=5)
         execute_query(
-            "INSERT INTO mfa_otp (user_id, otp_code, expires_at) VALUES (%s, %s, %s)",
-            (user_id, otp, otp_expires.strftime("%Y-%m-%d %H:%M:%S"))
+            """INSERT INTO mfa_otp (user_id, otp_code, expires_at)
+               VALUES (%s, %s, NOW() + INTERVAL 5 MINUTE)""",
+            (user_id, otp)
         )
         try:
             plain_email = decrypt_email(e_enc)
@@ -352,10 +352,10 @@ def login():
     if otp_enabled:
         # Generate and store OTP
         otp = _make_otp()
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
         execute_query(
-            "INSERT INTO mfa_otp (user_id, otp_code, expires_at) VALUES (%s, %s, %s)",
-            (user["id"], otp, expires_at.strftime("%Y-%m-%d %H:%M:%S"))
+            """INSERT INTO mfa_otp (user_id, otp_code, expires_at)
+               VALUES (%s, %s, NOW() + INTERVAL 5 MINUTE)""",
+            (user["id"], otp)
         )
         # Try to send email (decrypting PII only server-side)
         try:
