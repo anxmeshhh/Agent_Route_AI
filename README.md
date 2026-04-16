@@ -110,7 +110,8 @@ AgentRouteAI is a **genuinely agentic system** — not a scripted pipeline with 
 
 Enterprise-grade login page featuring Google SSO integration, encrypted credential handling, and a real-time system status indicator showing active neural paths and network latency. The minimalist dark UI emphasizes trust and operational focus.
 
-![Login Page](screenshots/login.png)
+![Login Page](<img width="1600" height="769" alt="image" src="https://github.com/user-attachments/assets/ce69e493-344b-4a6b-853a-663ef9741ed9" />
+)
 
 ---
 
