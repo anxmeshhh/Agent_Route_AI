@@ -20,7 +20,7 @@ if __name__ == "__main__":
 ======================================================================
     """)
     app.run(
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=5000,
         debug=app.config.get("DEBUG", True),
         threaded=True,   # Required for SSE concurrent connections

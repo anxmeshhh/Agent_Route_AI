@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+.env.local
+*.md
+new_html_files/
+fix_db.py
+.vscode/
+.idea/
+node_modules/
+*.log

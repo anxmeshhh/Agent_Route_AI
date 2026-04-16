@@ -1,0 +1,63 @@
+# ======================================================================
+#  AgentRouteAI — Docker Compose (Single Network, All Services)
+#  All components dockerized, discoverable by service name
+# ======================================================================
+
+services:
+  # ── MySQL Database ─────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: agentrouteai-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-theanimesh2005}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-shipment_risk_db}
+    ports:
+      - "3307:3306"      # Expose on 3307 to avoid local MySQL conflict
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - agentrouteai-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD:-theanimesh2005}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Flask Backend (AgentRouteAI) ───────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentrouteai-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      # Override MYSQL_HOST to use Docker service name
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      FLASK_DEBUG: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - agentrouteai-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  agentrouteai-net:
+    name: agentrouteai-net
+    driver: bridge
