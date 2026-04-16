@@ -953,6 +953,16 @@ async function onComplete(result, btn, btnText, spinner) {
     hideEl('brand-panel');
     renderResult(result);
     loadHistory();
+    // Auto-switch to Intel tab so Route Intelligence is immediately visible
+    setTimeout(() => {
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
+        const intelTab = document.getElementById('tab-intel');
+        const intelBtn = document.querySelector('[onclick="switchTab(\'intel\')"]');
+        if (intelTab) intelTab.classList.add('active');
+        if (intelBtn) intelBtn.classList.add('active');
+    }, 2500); // Wait 2.5s for fetchRouteAnalysis to populate data
+
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1064,8 +1074,20 @@ function renderResult(result) {
         }
     }
 
-    fetchRouteAnalysis(origin, dest, score, cargo, etaDays, transportMode);
-    _showMapDecision(`⚡ ${level} Risk (${score}/100)\n${origin} → ${dest}`);
+    // ── Route Intelligence: use BEST available origin/dest ─────────────────
+    // Priority: pendingOrigin (from SSE intake log) > intake fields > '--'
+    const raOrigin = _pendingOrigin || origin;
+    const raDest   = _pendingDest   || dest;
+    console.log('[render] fetchRouteAnalysis with:', raOrigin, '->', raDest);
+    if (raOrigin && raOrigin !== '--' && raDest && raDest !== '--') {
+        fetchRouteAnalysis(raOrigin, raDest, score, cargo, etaDays, transportMode);
+    } else {
+        // Still call with whatever we have — let API handle bad inputs gracefully
+        console.warn('[render] Partial origin/dest — trying route analysis anyway');
+        fetchRouteAnalysis(origin, dest, score, cargo, etaDays, transportMode);
+    }
+    _showMapDecision(`⚡ ${level} Risk (${score}/100)\n${raOrigin} → ${raDest}`);
+
 }
 
 function renderAgentsSummary(result) {
@@ -1122,7 +1144,12 @@ function _scoreToLevel(s) {
    10. ROUTE INTELLIGENCE STRIP
 ═══════════════════════════════════════════════════════════ */
 async function fetchRouteAnalysis(origin, dest, riskScore, cargoType, etaDays, transportMode) {
-    if (!origin||origin==='--'||!dest||dest==='--') return;
+    const o = (origin || '').trim();
+    const d = (dest   || '').trim();
+    if (!o || o === '--' || !d || d === '--') {
+        console.warn('[route-analysis] Skipped — empty origin/dest:', o, d);
+        return;
+    }
     try {
         const p = new URLSearchParams({
             origin, dest,

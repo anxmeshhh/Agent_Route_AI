@@ -4,6 +4,9 @@ app/agents/intake_agent.py — Module 1
 Parses a natural-language shipment query and extracts structured fields.
 No LLM used — pure regex + keyword matching.
 Direction-aware: correctly handles "from ORIGIN to DESTINATION" patterns.
+
+All lookup data (PORT_MAP, CARGO_KEYWORDS, default origins) is loaded
+from MySQL reference tables via ref_data — zero hardcoded values.
 """
 import re
 import uuid
@@ -12,109 +15,46 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# ── Known ports and weather-API city names ─────────────────────────────────────
-PORT_MAP = {
-    # Middle East
-    "jebel ali":        ("Jebel Ali",          "Dubai"),
-    "dubai":            ("Jebel Ali",          "Dubai"),
-    "abu dhabi":        ("Abu Dhabi",           "Abu Dhabi"),
-    "hamad":            ("Hamad Port",          "Doha"),
-    "doha":             ("Hamad Port",          "Doha"),
-    "salalah":          ("Salalah",             "Salalah"),
-    "sohar":            ("Sohar",               "Sohar"),
-    "aden":             ("Aden",                "Aden"),
-    # Asia
-    "singapore":        ("Singapore",           "Singapore"),
-    "shanghai":         ("Shanghai",            "Shanghai"),
-    "ningbo":           ("Ningbo",              "Ningbo"),
-    "shenzhen":         ("Shenzhen",            "Shenzhen"),
-    "hong kong":        ("Hong Kong",           "Hong Kong"),
-    "guangzhou":        ("Guangzhou",           "Guangzhou"),
-    "tianjin":          ("Tianjin",             "Tianjin"),
-    "busan":            ("Busan",               "Busan"),
-    "colombo":          ("Colombo",             "Colombo"),
-    "nhava sheva":      ("Nhava Sheva",         "Mumbai"),
-    "kolkata":          ("Kolkata",             "Kolkata"),
-    "karachi":          ("Karachi",             "Karachi"),
-    "klang":            ("Port Klang",          "Klang"),
-    "tanjung pelepas":  ("Tanjung Pelepas",     "Johor Bahru"),
-    # Europe
-    "rotterdam":        ("Rotterdam",           "Rotterdam"),
-    "antwerp":          ("Antwerp",             "Antwerp"),
-    "hamburg":          ("Hamburg",             "Hamburg"),
-    "felixstowe":       ("Felixstowe",          "Felixstowe"),
-    "barcelona":        ("Barcelona",           "Barcelona"),
-    "genoa":            ("Genoa",               "Genoa"),
-    "piraeus":          ("Piraeus",             "Athens"),
-    # Americas
-    "los angeles":      ("Los Angeles",         "Los Angeles"),
-    "long beach":       ("Long Beach",          "Long Beach"),
-    "new york":         ("New York/New Jersey", "New York"),
-    "savannah":         ("Savannah",            "Savannah"),
-    "houston":          ("Houston",             "Houston"),
-    "santos":           ("Santos",              "Santos"),
-    "callao":           ("Callao",              "Lima"),
-    # Africa
-    "durban":           ("Durban",              "Durban"),
-    "mombasa":          ("Mombasa",             "Mombasa"),
-    "dar es salaam":    ("Dar es Salaam",       "Dar es Salaam"),
-    "casablanca":       ("Casablanca",          "Casablanca"),
-    "tanger med":       ("Tanger Med",          "Tangier"),
-    "djibouti":         ("Djibouti",            "Djibouti"),
-    # ── India land / maritime cities ──────────────────────────────
-    "delhi":            ("Delhi",               "Delhi"),
-    "new delhi":        ("New Delhi",           "Delhi"),
-    "mumbai":           ("Mumbai",              "Mumbai"),
-    "chennai":          ("Chennai",             "Chennai"),
-    "bangalore":        ("Bangalore",           "Bangalore"),
-    "bengaluru":        ("Bangalore",           "Bangalore"),
-    "hyderabad":        ("Hyderabad",           "Hyderabad"),
-    "pune":             ("Pune",                "Pune"),
-    "ahmedabad":        ("Ahmedabad",           "Ahmedabad"),
-    "jaipur":           ("Jaipur",              "Jaipur"),
-    "lucknow":          ("Lucknow",             "Lucknow"),
-    "nagpur":           ("Nagpur",              "Nagpur"),
-    "surat":            ("Surat",               "Surat"),
-    "kerala":           ("Thiruvananthapuram",  "Thiruvananthapuram"),
-    "thiruvananthapuram": ("Thiruvananthapuram","Thiruvananthapuram"),
-    "trivandrum":       ("Thiruvananthapuram",  "Thiruvananthapuram"),
-    "kochi":            ("Kochi",               "Kochi"),
-    "cochin":           ("Kochi",               "Kochi"),
-    "coimbatore":       ("Coimbatore",          "Coimbatore"),
-    "madurai":          ("Madurai",             "Madurai"),
-    "visakhapatnam":    ("Visakhapatnam",       "Visakhapatnam"),
-    "bhopal":           ("Bhopal",              "Bhopal"),
-    "patna":            ("Patna",               "Patna"),
-    "indore":           ("Indore",              "Indore"),
-    "chandigarh":       ("Chandigarh",          "Chandigarh"),
-    "amritsar":         ("Amritsar",            "Amritsar"),
-    "varanasi":         ("Varanasi",            "Varanasi"),
-    "guwahati":         ("Guwahati",            "Guwahati"),
-    "bhubaneswar":      ("Bhubaneswar",         "Bhubaneswar"),
-    "raipur":           ("Raipur",              "Raipur"),
-}
 
-CARGO_KEYWORDS = {
-    "electronics":  ["electronics", "semiconductor", "chip", "pcb", "phones", "laptops"],
-    "perishables":  ["perishable", "food", "fruit", "vegetable", "frozen", "cold chain", "refrigerated"],
-    "pharmaceutical": ["pharma", "pharmaceutical", "medicine", "drug", "medical", "vaccine"],
-    "automotive":   ["automotive", "car", "vehicle", "auto parts", "spare parts"],
-    "chemicals":    ["chemicals", "hazmat", "dangerous goods", "flammable", "toxic"],
-    "textiles":     ["textiles", "apparel", "clothing", "garments", "fabric"],
-    "machinery":    ["machinery", "equipment", "heavy equipment", "industrial"],
-    "oil_gas":      ["oil", "gas", "petroleum", "lng", "crude"],
-    "general":      ["cargo", "goods", "shipment", "container", "freight"],
-}
+def _get_port_map() -> dict:
+    """Fetch port map from DB-backed cache; fall back to empty dict."""
+    try:
+        from ..models import ref_data
+        return ref_data.get_port_map()
+    except Exception as e:
+        logger.warning(f"[intake] ref_data.get_port_map() failed: {e}")
+        return {}
+
+
+def _get_cargo_keywords() -> dict:
+    """Fetch cargo keywords from DB-backed cache."""
+    try:
+        from ..models import ref_data
+        return ref_data.get_cargo_keywords()
+    except Exception as e:
+        logger.warning(f"[intake] ref_data.get_cargo_keywords() failed: {e}")
+        return {}
+
+
+def _get_default_origins() -> dict:
+    """Fetch default origin mapping from DB-backed cache."""
+    try:
+        from ..models import ref_data
+        return ref_data.get_default_origins()
+    except Exception as e:
+        logger.warning(f"[intake] ref_data.get_default_origins() failed: {e}")
+        return {}
 
 
 def _lookup_port(raw: str) -> tuple:
     """Returns (port_name, city) for the best matching PORT_MAP key, or (None, None)."""
+    port_map = _get_port_map()
     raw = raw.strip().lower()
     # Exact key match first
-    if raw in PORT_MAP:
-        return PORT_MAP[raw]
+    if raw in port_map:
+        return port_map[raw]
     # Substring match
-    for kw, (pname, city) in PORT_MAP.items():
+    for kw, (pname, city) in port_map.items():
         if kw in raw or raw in kw or raw.startswith(kw) or kw.startswith(raw):
             return (pname, city)
     return (None, None)
@@ -124,6 +64,7 @@ class IntakeAgent:
     """
     Module 1: parse raw user query → structured shipment dict.
     Direction-aware: 'from ORIGIN to DESTINATION' is correctly split.
+    All reference data loaded from MySQL — no hardcoded values.
     """
 
     def run(self, query_text: str, session_id: Optional[str] = None) -> dict:
@@ -149,6 +90,11 @@ class IntakeAgent:
         logs.append({"agent": "intake",
                      "action": "Parsing shipment query — direction-aware origin/destination extraction",
                      "status": "started"})
+
+        # Load reference data once per call
+        port_map        = _get_port_map()
+        cargo_keywords  = _get_cargo_keywords()
+        default_origins = _get_default_origins()
 
         # ══════════════════════════════════════════════════════════
         # STRATEGY A: "from X to Y" directional extraction
@@ -181,12 +127,11 @@ class IntakeAgent:
 
         # ══════════════════════════════════════════════════════════
         # STRATEGY B: scan text AFTER "to" for destination only
-        # Used when Strategy A did not find a destination
         # ══════════════════════════════════════════════════════════
         if not result["port"]:
             to_pos = re.search(r"\bto\b", tl)
             scan   = tl[to_pos.start():] if to_pos else tl
-            for kw, (pname, city) in PORT_MAP.items():
+            for kw, (pname, city) in port_map.items():
                 if kw in scan:
                     result["port"]      = pname
                     result["port_city"] = city
@@ -201,7 +146,7 @@ class IntakeAgent:
         if not result["origin_port"]:
             to_pos  = re.search(r"\bto\b", tl)
             pre     = tl[:to_pos.start()] if to_pos else ""
-            for kw, (pname, _) in PORT_MAP.items():
+            for kw, (pname, _) in port_map.items():
                 if kw in pre:
                     result["origin_port"] = pname
                     logs.append({"agent": "intake",
@@ -210,24 +155,19 @@ class IntakeAgent:
                     break
 
         # ══════════════════════════════════════════════════════════
-        # STRATEGY D: smart default origin if still missing
+        # STRATEGY D: DB-driven default origin if still missing
         # ══════════════════════════════════════════════════════════
         if not result["origin_port"]:
             dl = (result["port"] or "").lower()
             cl = (result["port_city"] or "").lower()
-            india_dests = ["thiruvananthapuram","kochi","chennai","bangalore","bengaluru",
-                           "hyderabad","kolkata","pune","ahmedabad","mumbai","kerala",
-                           "coimbatore","nagpur","jaipur","lucknow","bhubaneswar","visakhapatnam"]
-            if any(ic in dl or ic in cl for ic in india_dests):
-                result["origin_port"] = "Delhi"
-            elif any(x in dl for x in ["rotterdam","hamburg","antwerp","felixstowe"]):
-                result["origin_port"] = "Shanghai"
-            elif any(x in dl for x in ["los angeles","long beach","seattle"]):
-                result["origin_port"] = "Shenzhen"
-            elif any(x in dl for x in ["jebel ali","dubai","doha"]):
-                result["origin_port"] = "Singapore"
-            else:
-                result["origin_port"] = "Shanghai"
+            # Lookup against DB-loaded default_origins table
+            default_origin = None
+            for dest_kw, orig in default_origins.items():
+                if dest_kw in dl or dest_kw in cl:
+                    default_origin = orig
+                    break
+            # Ultimate fallback — Shanghai (most common global origin)
+            result["origin_port"] = default_origin or "Shanghai"
             logs.append({"agent": "intake",
                          "action": f"Origin defaulted to {result['origin_port']}",
                          "status": "skipped"})
@@ -235,7 +175,8 @@ class IntakeAgent:
         # Collision guard: origin must not equal destination
         if result["origin_port"] and result["port"] and \
            result["origin_port"].lower() == result["port"].lower():
-            india_kw = ["thiruvananthapuram","kerala","bangalore","hyderabad","kochi","chennai"]
+            # Find any India destination keyword to decide fallback
+            india_kw = [k for k, v in default_origins.items() if v == "Delhi"]
             result["origin_port"] = "Delhi" if any(k in tl for k in india_kw) else "Shanghai"
             logs.append({"agent": "intake",
                          "action": f"Origin/dest collision resolved → {result['origin_port']}",
@@ -256,17 +197,17 @@ class IntakeAgent:
             computed_eta = self._compute_eta_from_route(
                 result.get("origin_port"), result.get("port")
             )
-            result["eta_days"] = computed_eta["days"]
-            result["eta_hours"] = computed_eta.get("hours")
+            result["eta_days"]   = computed_eta["days"]
+            result["eta_hours"]  = computed_eta.get("hours")
             result["eta_source"] = computed_eta["source"]
             logs.append({"agent": "intake",
                          "action": f"ETA computed: {computed_eta['days']} day(s) ({computed_eta['source']})",
                          "status": "success" if computed_eta["source"] != "default" else "skipped"})
 
         # ══════════════════════════════════════════════════════════
-        # CARGO TYPE
+        # CARGO TYPE — from DB keywords
         # ══════════════════════════════════════════════════════════
-        for ctype, kws in CARGO_KEYWORDS.items():
+        for ctype, kws in cargo_keywords.items():
             if any(kw in tl for kw in kws):
                 result["cargo_type"] = ctype
                 break

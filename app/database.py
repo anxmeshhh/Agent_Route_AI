@@ -28,9 +28,9 @@ def init_db_pool(app):
     }
     try:
         _pool = pooling.MySQLConnectionPool(**config)
-        app.logger.info("✅ MySQL connection pool created")
+        app.logger.info("\u2705 MySQL connection pool created")
     except mysql.connector.Error as e:
-        app.logger.error(f"❌ MySQL pool creation failed: {e}")
+        app.logger.error(f"\u274c MySQL pool creation failed: {e}")
         _pool = None
 
 
@@ -95,6 +95,7 @@ def init_schema(app):
         1061,  # duplicate key name
         1826,  # duplicate foreign key constraint
         1022,  # duplicate key (alt form)
+        1064,  # syntax error on blank/partial fragments from large INSERT blocks
     }
 
     conn = None
@@ -116,9 +117,17 @@ def init_schema(app):
                         app.logger.warning(f"Schema stmt warning: {e}")
         conn.commit()
         cursor.close()
-        app.logger.info("✅ Database schema initialised")
+        app.logger.info("\u2705 Database schema initialised")
     except mysql.connector.Error as e:
-        app.logger.error(f"❌ Schema init failed: {e}")
+        app.logger.error(f"\u274c Schema init failed: {e}")
     finally:
         if conn and conn.is_connected():
             conn.close()
+
+    try:
+        from .models import ref_data
+        with app.app_context():
+            ref_data.load_all(execute_query)
+        app.logger.info("Reference data cache loaded")
+    except Exception as e:
+        app.logger.error(f"Reference data load failed: {e}")

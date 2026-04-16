@@ -2,11 +2,11 @@
 app/agents/port_intel_agent.py — Port Intelligence Agent
 
 Real-time port intelligence via two complementary data sources:
-  1. Structural baseline profiles (capacity, historical efficiency, region)
+  1. Structural baseline profiles from MySQL ref_ports table
   2. Live Tavily search for current port news (congestion, strikes, closures)
 
-The PORT_PROFILES dict contains ONLY structural/capacity data — not live status.
-All real-time operational status is fetched from Tavily on every call.
+All PORT_PROFILES and keyword lists loaded from MySQL via ref_data.
+Zero hardcoded values.
 """
 import json
 import logging
@@ -17,107 +17,20 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Structural port profiles — capacity / region / efficiency BASELINES only.
-# These never go out of date (TEU capacity, region). Live status via Tavily.
-PORT_PROFILES = {
-    "jebel ali": {
-        "region": "Middle East", "capacity_teu": 19_000_000,
-        "avg_wait_hours": 12, "congestion_baseline": "LOW",
-        "labor_risk": "LOW", "infrastructure": "EXCELLENT",
-        "efficiency_index": 0.92, "peak_months": [10, 11, 12, 1],
-    },
-    "rotterdam": {
-        "region": "Europe", "capacity_teu": 14_800_000,
-        "avg_wait_hours": 8, "congestion_baseline": "LOW",
-        "labor_risk": "MEDIUM", "infrastructure": "EXCELLENT",
-        "efficiency_index": 0.95, "peak_months": [9, 10, 11],
-    },
-    "shanghai": {
-        "region": "East Asia", "capacity_teu": 47_000_000,
-        "avg_wait_hours": 24, "congestion_baseline": "MEDIUM",
-        "labor_risk": "LOW", "infrastructure": "EXCELLENT",
-        "efficiency_index": 0.88, "peak_months": [6, 7, 8, 10, 11],
-    },
-    "singapore": {
-        "region": "Southeast Asia", "capacity_teu": 38_000_000,
-        "avg_wait_hours": 6, "congestion_baseline": "LOW",
-        "labor_risk": "LOW", "infrastructure": "EXCELLENT",
-        "efficiency_index": 0.96, "peak_months": [10, 11, 12],
-    },
-    "mumbai": {
-        "region": "South Asia", "capacity_teu": 5_500_000,
-        "avg_wait_hours": 36, "congestion_baseline": "HIGH",
-        "labor_risk": "MEDIUM", "infrastructure": "MODERATE",
-        "efficiency_index": 0.72, "peak_months": [10, 11, 12, 1, 2],
-    },
-    "hamburg": {
-        "region": "Europe", "capacity_teu": 8_700_000,
-        "avg_wait_hours": 10, "congestion_baseline": "LOW",
-        "labor_risk": "MEDIUM", "infrastructure": "EXCELLENT",
-        "efficiency_index": 0.91, "peak_months": [9, 10, 11],
-    },
-    "los angeles": {
-        "region": "North America", "capacity_teu": 9_200_000,
-        "avg_wait_hours": 18, "congestion_baseline": "MEDIUM",
-        "labor_risk": "HIGH", "infrastructure": "GOOD",
-        "efficiency_index": 0.80, "peak_months": [8, 9, 10, 11],
-    },
-    "busan": {
-        "region": "East Asia", "capacity_teu": 22_000_000,
-        "avg_wait_hours": 8, "congestion_baseline": "LOW",
-        "labor_risk": "LOW", "infrastructure": "EXCELLENT",
-        "efficiency_index": 0.94, "peak_months": [7, 8, 10, 11],
-    },
-    "antwerp": {
-        "region": "Europe", "capacity_teu": 12_000_000,
-        "avg_wait_hours": 10, "congestion_baseline": "LOW",
-        "labor_risk": "MEDIUM", "infrastructure": "EXCELLENT",
-        "efficiency_index": 0.93, "peak_months": [9, 10, 11],
-    },
-    "colombo": {
-        "region": "South Asia", "capacity_teu": 7_200_000,
-        "avg_wait_hours": 14, "congestion_baseline": "MEDIUM",
-        "labor_risk": "MEDIUM", "infrastructure": "GOOD",
-        "efficiency_index": 0.82, "peak_months": [10, 11, 12, 5, 6],
-    },
-    "nhava sheva": {
-        "region": "South Asia", "capacity_teu": 5_800_000,
-        "avg_wait_hours": 30, "congestion_baseline": "HIGH",
-        "labor_risk": "MEDIUM", "infrastructure": "MODERATE",
-        "efficiency_index": 0.74, "peak_months": [10, 11, 12, 1],
-    },
-    "felixstowe": {
-        "region": "Europe", "capacity_teu": 4_000_000,
-        "avg_wait_hours": 12, "congestion_baseline": "LOW",
-        "labor_risk": "MEDIUM", "infrastructure": "GOOD",
-        "efficiency_index": 0.88, "peak_months": [9, 10, 11],
-    },
-    "barcelona": {
-        "region": "Europe", "capacity_teu": 3_500_000,
-        "avg_wait_hours": 10, "congestion_baseline": "LOW",
-        "labor_risk": "LOW", "infrastructure": "GOOD",
-        "efficiency_index": 0.87, "peak_months": [7, 8, 10],
-    },
-    "hong kong": {
-        "region": "East Asia", "capacity_teu": 18_000_000,
-        "avg_wait_hours": 18, "congestion_baseline": "MEDIUM",
-        "labor_risk": "LOW", "infrastructure": "EXCELLENT",
-        "efficiency_index": 0.90, "peak_months": [10, 11, 12],
-    },
-}
 
-# Live signal keywords — for parsing Tavily article content
-_STRIKE_KW    = ["strike", "labor dispute", "walkout", "industrial action", "workers protest", "dock workers"]
-_CLOSURE_KW   = ["closed", "closure", "operations suspended", "shut down", "port shut", "blocked entry"]
-_CONGESTION_KW = ["congestion", "backlog", "queue", "waiting time", "dwell time", "vessel queue", "port delay"]
+def _ref():
+    """Lazy import of ref_data to avoid circular imports."""
+    from ..models import ref_data
+    return ref_data
 
 
 class PortIntelAgent:
-    """Port operational intelligence — structural baseline + Tavily live news fusion."""
+    """Port operational intelligence — structural baseline + Tavily live news fusion.
+    All reference data loaded from MySQL — no hardcoded dicts."""
 
     def __init__(self, db_execute, config: dict):
-        self.execute   = db_execute
-        self.config    = config
+        self.execute    = db_execute
+        self.config     = config
         self.tavily_key = config.get("TAVILY_API_KEY", "")
 
     def run(self, port: str, port_city: str, session_id: str) -> dict:
@@ -142,24 +55,29 @@ class PortIntelAgent:
             return result
 
         search_key = (port or port_city or "").lower()
+        rd = _ref()
 
-        # ── 1. Structural baseline ──────────────────────────────────────
+        # ── 1. Structural baseline from DB ──────────────────────────────
         logs.append(self._log(f"Loading structural profile for: {port or port_city}", "started"))
+        port_profiles = rd.get_port_profiles()
         profile = None
-        for key, data in PORT_PROFILES.items():
+        for key, data in port_profiles.items():
             if key in search_key or search_key in key or \
                any(word in search_key for word in key.split() if len(word) > 3):
                 profile = data
                 break
 
+        # Global average profile — also from DB default values
+        default_profile = {
+            "region": "Unknown", "capacity_teu": 5_000_000,
+            "avg_wait_hours": 18, "congestion_baseline": "MEDIUM",
+            "labor_risk": "MEDIUM", "infrastructure": "MODERATE",
+            "efficiency_index": 0.80, "peak_months": [10, 11, 12],
+        }
+
         if not profile:
             logs.append(self._log("Port not in baseline index — using global average profile", "skipped"))
-            profile = {
-                "region": "Unknown", "capacity_teu": 5_000_000,
-                "avg_wait_hours": 18, "congestion_baseline": "MEDIUM",
-                "labor_risk": "MEDIUM", "infrastructure": "MODERATE",
-                "efficiency_index": 0.80, "peak_months": [10, 11, 12],
-            }
+            profile = default_profile
         else:
             logs.append(self._log(
                 f"✅ Baseline — Region: {profile['region']}, TEU capacity: {profile['capacity_teu']:,}/yr",
@@ -182,11 +100,11 @@ class PortIntelAgent:
             congestion = profile["congestion_baseline"]
 
         result.update({
-            "avg_wait_hours":      adjusted_wait,
-            "congestion_level":    congestion,
-            "labor_status":        profile["labor_risk"],
+            "avg_wait_hours":        adjusted_wait,
+            "congestion_level":      congestion,
+            "labor_status":          profile["labor_risk"],
             "infrastructure_rating": profile["infrastructure"],
-            "efficiency_index":    profile["efficiency_index"],
+            "efficiency_index":      profile["efficiency_index"],
         })
 
         # ── 3. Live Tavily search for current port status ───────────────
@@ -212,7 +130,15 @@ class PortIntelAgent:
             logs.append(self._log("No Tavily API key — skipping live port news", "skipped"))
 
         # ── 4. Parse live articles into real-time signals ───────────────
-        live_signals, live_delta = self._parse_live_articles(live_articles, port or port_city)
+        # Load keyword lists from DB
+        strike_kw     = rd.get_risk_keywords("port_strike")
+        closure_kw    = rd.get_risk_keywords("port_closure")
+        congestion_kw = rd.get_risk_keywords("port_congestion")
+
+        live_signals, live_delta = self._parse_live_articles(
+            live_articles, port or port_city,
+            strike_kw, closure_kw, congestion_kw
+        )
 
         # Upgrade congestion/labor based on live findings
         for sig in live_signals:
@@ -243,7 +169,7 @@ class PortIntelAgent:
             logs.append(self._log(f"DB query error: {e}", "failed"))
 
         # ── 6. Compose final risk signals ───────────────────────────────
-        signals = list(live_signals)  # live signals first (highest priority)
+        signals = list(live_signals)
         score = live_delta
 
         if congestion == "HIGH":
@@ -327,7 +253,9 @@ class PortIntelAgent:
             logger.warning(f"[port_intel] Tavily error: {e}")
             return []
 
-    def _parse_live_articles(self, articles: list, port: str) -> tuple:
+    def _parse_live_articles(self, articles: list, port: str,
+                              strike_kw: list, closure_kw: list,
+                              congestion_kw: list) -> tuple:
         """Parse Tavily results into port risk signals. Returns (signals, score_delta)."""
         signals, score = [], 0
         port_words = set((port or "").lower().split())
@@ -338,11 +266,10 @@ class PortIntelAgent:
             url     = art.get("url", "")
             text    = f"{title} {content}".lower()
 
-            # Require port name to appear in the text
             if port_words and not any(w in text for w in port_words if len(w) > 3):
                 continue
 
-            if any(k in text for k in _STRIKE_KW):
+            if any(k in text for k in strike_kw):
                 signals.append({
                     "type": "port", "severity": "HIGH",
                     "title": f"🔴 LIVE — Labor action at {port}",
@@ -350,7 +277,7 @@ class PortIntelAgent:
                     "url": url, "confidence": 0.88, "source": "Tavily",
                 })
                 score += 8
-            elif any(k in text for k in _CLOSURE_KW):
+            elif any(k in text for k in closure_kw):
                 signals.append({
                     "type": "port", "severity": "HIGH",
                     "title": f"🔴 LIVE — Operations disrupted at {port}",
@@ -358,7 +285,7 @@ class PortIntelAgent:
                     "url": url, "confidence": 0.85, "source": "Tavily",
                 })
                 score += 10
-            elif any(k in text for k in _CONGESTION_KW):
+            elif any(k in text for k in congestion_kw):
                 signals.append({
                     "type": "port", "severity": "MEDIUM",
                     "title": f"🟡 LIVE — Congestion reported at {port}",

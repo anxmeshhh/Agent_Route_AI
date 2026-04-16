@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Config
 from .database import init_db_pool, init_schema, close_db
+from .models import ref_data
 
 
 def create_app():
@@ -24,10 +25,16 @@ def create_app():
     # CORS for streaming + cookie-based auth
     CORS(app, supports_credentials=True)
 
-    # Database
+    # Database — order matters: pool first, then schema, then ref cache
     with app.app_context():
-        init_schema(app)
         init_db_pool(app)
+        init_schema(app)
+        # Load all reference tables into memory after pool + schema are ready
+        try:
+            ref_data.load_all(__import__('app.database', fromlist=['execute_query']).execute_query)
+            app.logger.info("Reference data cache loaded")
+        except Exception as _e:
+            app.logger.error(f"Reference data cache failed: {_e}")
 
     app.teardown_appcontext(close_db)
 

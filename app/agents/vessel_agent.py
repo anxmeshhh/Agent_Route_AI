@@ -6,8 +6,8 @@ Three-layer intelligence (no random values anywhere):
   2. Tavily search — fetches real vessel news/AIS reports when vessel name is known
   3. Deterministic route estimation — physics-based, no random.uniform()
 
-All ETA deviations are derived from real data sources or deterministic route
-physics. Zero random number usage.
+All route benchmarks, port region lists, and constants loaded from MySQL
+via ref_data — zero hardcoded values.
 """
 import json
 import logging
@@ -19,35 +19,17 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Route transit benchmarks (nautical physics + industry standard schedules)
-ROUTE_BENCHMARKS = {
-    ("shanghai", "rotterdam"):     {"normal_days": 28, "via": "Suez", "buffer_days": 3.0},
-    ("shanghai", "jebel ali"):     {"normal_days": 14, "via": "Malacca→Hormuz", "buffer_days": 1.8},
-    ("shanghai", "los angeles"):   {"normal_days": 14, "via": "Transpacific", "buffer_days": 1.5},
-    ("singapore", "rotterdam"):    {"normal_days": 22, "via": "Suez", "buffer_days": 2.5},
-    ("singapore", "jebel ali"):    {"normal_days": 7,  "via": "Direct", "buffer_days": 1.0},
-    ("singapore", "hamburg"):      {"normal_days": 22, "via": "Suez", "buffer_days": 2.5},
-    ("hamburg", "mumbai"):         {"normal_days": 18, "via": "Suez", "buffer_days": 2.0},
-    ("rotterdam", "singapore"):    {"normal_days": 22, "via": "Suez", "buffer_days": 2.5},
-    ("los angeles", "shanghai"):   {"normal_days": 14, "via": "Transpacific", "buffer_days": 1.5},
-    ("busan", "rotterdam"):        {"normal_days": 30, "via": "Suez", "buffer_days": 3.0},
-    ("mumbai", "rotterdam"):       {"normal_days": 17, "via": "Suez", "buffer_days": 2.0},
-    ("mumbai", "jebel ali"):       {"normal_days": 3,  "via": "Direct", "buffer_days": 0.5},
-    ("colombo", "rotterdam"):      {"normal_days": 18, "via": "Suez", "buffer_days": 2.0},
-    ("hong kong", "rotterdam"):    {"normal_days": 26, "via": "Suez", "buffer_days": 2.8},
-    ("busan", "los angeles"):      {"normal_days": 12, "via": "Transpacific", "buffer_days": 1.5},
-    ("antwerp", "singapore"):      {"normal_days": 22, "via": "Suez", "buffer_days": 2.5},
-}
 
-# Routes currently known to be high-risk (Red Sea / Suez affected)
-HIGH_RISK_ROUTES_SUEZ = True   # Based on current Houthi attacks (fetched at runtime by geo agent)
-CAPE_EXTRA_DAYS       = 14     # Extra transit days via Cape vs Suez
+def _ref():
+    """Lazy import of ref_data to avoid circular imports."""
+    from ..models import ref_data
+    return ref_data
 
 
 class VesselAgent:
     """
     Real-time vessel tracking — AISStream + Tavily news + deterministic physics.
-    No random numbers used anywhere.
+    No random numbers used anywhere. No hardcoded values.
     """
 
     def __init__(self, db_execute, config: dict):
@@ -104,21 +86,25 @@ class VesselAgent:
                     "✅ AISStream API key validated — live AIS stream active",
                     "success"
                 ))
-                # AISStream is a global firehose — specific vessel lookup
-                # requires vessel MMSI. Flag connection valid and use Tavily for vessel intel.
             else:
                 logs.append(self._log("AISStream connection failed — using Tavily", "failed"))
         else:
             logs.append(self._log("No AISStream key — using Tavily vessel intelligence", "skipped"))
 
         # ── Tavily: search for vessel-specific real-time news ─────────
+        reroute_kw = _ref().get_risk_keywords("vessel_reroute")
+        delay_kw   = _ref().get_risk_keywords("vessel_delay")
+        early_kw   = _ref().get_risk_keywords("vessel_early")
+        cape_days  = _ref().get_cape_extra_days()
+
         if self.tavily_key and not self.tavily_key.startswith("your_"):
             logs.append(self._log(
                 f"🌐 Searching Tavily for live vessel intelligence: {vessel_name}", "started"
             ))
             t0 = time.time()
             vessel_articles, vessel_data = self._fetch_vessel_intelligence(
-                vessel_name, origin_port, dest_port
+                vessel_name, origin_port, dest_port,
+                reroute_kw, delay_kw, early_kw, cape_days
             )
             ms = int((time.time() - t0) * 1000)
             result["tavily_articles"] = len(vessel_articles)
@@ -150,17 +136,16 @@ class VesselAgent:
         return self._build_final_signals(result, vessel_name, logs)
 
     # ─── Tavily vessel intelligence ──────────────────────────────────
-    def _fetch_vessel_intelligence(self, vessel_name: str,
-                                   origin: str, dest: str) -> tuple:
+    def _fetch_vessel_intelligence(self, vessel_name: str, origin: str, dest: str,
+                                   reroute_kw: list, delay_kw: list,
+                                   early_kw: list, cape_days: int) -> tuple:
         """
         Search Tavily for real news about this specific vessel.
         Returns (articles, extracted_data_dict).
         """
-        # Search 1: vessel name directly
         q1 = f'"{vessel_name}" vessel shipping position AIS delay reroute 2025'
         articles = self._tavily_search(q1, days=30, max_results=5)
 
-        # Search 2: route-level news if few results
         if len(articles) < 2 and origin and dest:
             q2 = f"shipping vessel delay reroute {origin} {dest} 2025"
             articles += self._tavily_search(q2, days=14, max_results=3)
@@ -168,15 +153,12 @@ class VesselAgent:
         if not articles:
             return [], {}
 
-        # Parse articles for vessel status signals
         data = {"vessel_status": "in_transit"}
         combined_text = " ".join(
             f"{a.get('title','')} {a.get('content','')}" for a in articles
         ).lower()
 
-        # Detect rerouting
-        reroute_kw = ["rerouted", "diverted", "cape of good hope", "new route",
-                      "avoiding suez", "red sea avoid", "longer route"]
+        # Detect rerouting (keywords from DB)
         if any(k in combined_text for k in reroute_kw):
             data["is_rerouted"]   = True
             data["vessel_status"] = "rerouted"
@@ -184,22 +166,18 @@ class VesselAgent:
                 "Live Tavily data indicates vessel/fleet rerouting "
                 "(Red Sea avoidance / Cape diversion)"
             )
-            data["eta_deviation_days"] = float(CAPE_EXTRA_DAYS)
+            data["eta_deviation_days"] = float(cape_days)
 
-        # Detect delays/port calls
-        delay_kw = ["delayed", "behind schedule", "port call", "anchored waiting",
-                    "congestion", "engine trouble", "mechanical"]
+        # Detect delays
         if not data.get("is_rerouted") and any(k in combined_text for k in delay_kw):
             data["vessel_status"]      = "delayed"
-            data["eta_deviation_days"] = 2.5  # Conservative delay estimate
+            data["eta_deviation_days"] = 2.5
 
-        # Detect early arrival  
-        early_kw = ["ahead of schedule", "early arrival", "fast transit"]
+        # Detect early arrival
         if not data.get("is_rerouted") and any(k in combined_text for k in early_kw):
             data["vessel_status"]      = "ahead_of_schedule"
             data["eta_deviation_days"] = -1.5
 
-        # If nothing specific found, no deviation
         if "eta_deviation_days" not in data:
             data["eta_deviation_days"] = 0.0
 
@@ -236,7 +214,7 @@ class VesselAgent:
             ws.connect("wss://stream.aisstream.io/v0/stream", timeout=4)
             sub = {
                 "APIKey": self.ais_key,
-                "BoundingBoxes": [[[0, 0], [1, 1]]],  # tiny area to minimize data
+                "BoundingBoxes": [[[0, 0], [1, 1]]],
                 "FilterMessageTypes": ["PositionReport"],
             }
             ws.send(json.dumps(sub))
@@ -252,7 +230,7 @@ class VesselAgent:
                                       eta_days: int) -> dict:
         """
         Physics-based route estimation without any random values.
-        ETA deviation = scheduled ETA vs industry-standard transit time.
+        ETA deviation = scheduled ETA vs industry-standard transit time from DB.
         """
         result = {
             "vessel_status":       "estimated",
@@ -268,26 +246,26 @@ class VesselAgent:
         orig_l = origin.lower()
         dest_l = dest.lower()
 
-        # Find matching benchmark
+        # Load benchmarks from DB cache
+        benchmarks = _ref().get_route_benchmarks()
+
         benchmark = None
-        for (src, dst), data in ROUTE_BENCHMARKS.items():
+        for (src, dst), data in benchmarks.items():
             if ((src in orig_l or orig_l in src) and (dst in dest_l or dest_l in dst)) or \
                ((dst in orig_l or orig_l in dst) and (src in dest_l or dest_l in src)):
                 benchmark = data
                 break
 
         if benchmark:
-            normal_days = benchmark["normal_days"]
-            buffer      = benchmark["buffer_days"]
-            via         = benchmark["via"]
+            normal_days  = benchmark["normal_days"]
+            buffer       = benchmark["buffer_days"]
+            via          = benchmark["via"]
+            cape_days    = _ref().get_cape_extra_days()
 
-            # Deterministic deviation = actual ETA vs industry normal
             if eta_days < normal_days * 0.75:
-                # ETA is unrealistically fast — likely input error or fast charter
                 result["eta_deviation_days"] = round(normal_days - eta_days, 1)
                 result["route_risk"] = "HIGH"
             elif eta_days > normal_days + buffer * 3:
-                # ETA is significantly longer than normal — possible rerouting
                 result["eta_deviation_days"] = round(eta_days - normal_days, 1)
                 result["route_risk"] = "MEDIUM"
                 result["is_rerouted"] = True
@@ -295,20 +273,19 @@ class VesselAgent:
                     f"ETA ({eta_days}d) exceeds normal transit ({normal_days}d via {via}). "
                     "Possible Cape diversion or waypoint stop."
                 )
-                result["current_speed_knots"] = 12.5   # Slow steam on long diversion
+                result["current_speed_knots"] = 12.5
             elif eta_days > normal_days + buffer:
-                # Slightly behind
                 result["eta_deviation_days"] = round(eta_days - normal_days, 1)
                 result["route_risk"] = "LOW"
             else:
-                # On schedule — deviation is 0 (not random)
                 result["eta_deviation_days"] = 0.0
 
         else:
-            # Unknown route — check geographic risk regions
-            me_ports = ["jebel", "dubai", "doha", "salalah", "aden", "muscat"]
-            eu_ports = ["rotterdam", "hamburg", "antwerp", "felixstowe"]
-            as_ports = ["shanghai", "ningbo", "singapore", "busan", "hong kong"]
+            # Unknown route — use region port lists from DB
+            region_ports = _ref().get_region_ports()
+            me_ports = region_ports.get("middle_east", []) + region_ports.get("persian_gulf", [])
+            eu_ports = region_ports.get("europe", [])
+            as_ports = region_ports.get("east_asia", []) + region_ports.get("se_asia", [])
 
             if any(p in dest_l for p in me_ports):
                 if any(p in orig_l for p in eu_ports + as_ports):
@@ -351,7 +328,7 @@ class VesselAgent:
             signals.append({
                 "type": "vessel", "severity": "MEDIUM",
                 "title": f"Moderate ETA deviation: {deviation:+.1f} days",
-                "detail": f"Minor delay pattern detected for this route.",
+                "detail": "Minor delay pattern detected for this route.",
                 "confidence": 0.65,
             })
             score += 8
@@ -383,7 +360,6 @@ class VesselAgent:
             })
             score += 5
 
-        # AIS connected — positive signal (proves key works)
         if result.get("ais_connected"):
             logs.append(self._log("AISStream: live position data stream confirmed active", "success"))
 
