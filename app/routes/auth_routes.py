@@ -58,36 +58,120 @@ def _make_otp() -> str:
     return "".join(random.choices(string.digits, k=6))
 
 
-def _send_otp_email(to_email: str, otp: str, display_name: str):
-    """Send OTP via SMTP. Swallows errors (logs warning)."""
+def _send_otp_email(to_email: str, otp: str, display_name: str) -> bool:
+    """
+    Send OTP via SMTP (Gmail / any SMTP provider).
+    Returns True on success, False on failure.
+    In dev mode (SMTP_USER not configured), logs OTP to console instead.
+    """
     cfg = current_app.config
+    smtp_user = cfg.get("SMTP_USER", "").strip()
+    smtp_pass = cfg.get("SMTP_PASS", "").strip()
+
+    # ── Dev mode fallback: print to console ──────────────────────
+    if not smtp_user or smtp_user == "your.email@gmail.com":
+        logger.warning(
+            f"\n{'='*60}\n"
+            f"  [DEV MODE] OTP for {display_name} ({to_email}): {otp}\n"
+            f"  (Configure SMTP in .env to send real emails)\n"
+            f"{'='*60}"
+        )
+        return True  # Return True so login flow continues
+
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"AgentRoute AI — Your login code: {otp}"
-        msg["From"] = cfg.get("SMTP_FROM", "AgentRoute AI")
-        msg["To"] = to_email
+        msg["Subject"] = f"[{otp}] Your AgentRouteAI login code"
+        msg["From"]    = cfg.get("SMTP_FROM", f"AgentRoute AI <{smtp_user}>")
+        msg["To"]      = to_email
 
-        html = f"""
-        <div style="font-family:sans-serif;background:#0d1117;color:#e2e8f0;padding:32px;border-radius:12px;max-width:480px;margin:auto">
-          <h2 style="color:#22c55e;margin-bottom:8px">AgentRoute<span style="color:#818cf8">AI</span></h2>
-          <p>Hi <strong>{display_name}</strong>,</p>
-          <p>Your one-time login code is:</p>
-          <div style="font-size:40px;font-weight:700;letter-spacing:12px;color:#facc15;text-align:center;padding:16px;background:#1e2433;border-radius:8px;margin:16px 0">{otp}</div>
-          <p style="color:#94a3b8;font-size:13px">This code expires in 5 minutes. Do not share it with anyone.</p>
-          <hr style="border-color:#2d3748;margin:24px 0">
-          <p style="font-size:11px;color:#64748b">AgentRoute AI — Shipment Intelligence Platform</p>
+        # ── Plain text fallback ───────────────────────────────────
+        text = (
+            f"Hi {display_name},\n\n"
+            f"Your AgentRouteAI login code is: {otp}\n\n"
+            f"This code expires in 5 minutes. Do not share it.\n\n"
+            f"— AgentRoute AI"
+        )
+
+        # ── Beautiful HTML email ──────────────────────────────────
+        otp_spaced = "  ".join(list(otp))  # "1  2  3  4  5  6"
+        html = f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0D0E17;font-family:Inter,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0D0E17;padding:40px 16px;">
+<tr><td align="center">
+  <table width="480" cellpadding="0" cellspacing="0" style="background:rgba(24,25,36,0.95);border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;max-width:480px;width:100%;">
+
+    <!-- Header -->
+    <tr><td style="background:linear-gradient(135deg,#00D9FF,#7C3AED);padding:24px 32px;">
+      <h1 style="margin:0;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px;">
+        AgentRoute<span style="opacity:0.8">AI</span>
+      </h1>
+      <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.1em;">
+        Kinetic Intelligence Platform
+      </p>
+    </td></tr>
+
+    <!-- Body -->
+    <tr><td style="padding:32px;">
+      <p style="margin:0 0 8px;font-size:14px;color:#abaab7;">Hi <strong style="color:#f1effd;">{display_name}</strong>,</p>
+      <p style="margin:0 0 24px;font-size:13px;color:#757480;line-height:1.6;">
+        Your secure one-time login code for AgentRoute AI is:
+      </p>
+
+      <!-- OTP Box -->
+      <div style="background:#0D0E17;border:2px solid rgba(0,217,255,0.3);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
+        <div style="font-size:42px;font-weight:700;letter-spacing:16px;color:#00D9FF;font-family:monospace;">
+          {otp_spaced}
         </div>
-        """
-        msg.attach(MIMEText(html, "html"))
+        <div style="font-size:11px;color:#757480;margin-top:10px;text-transform:uppercase;letter-spacing:0.1em;">
+          Expires in 5 minutes
+        </div>
+      </div>
+
+      <!-- JWT explanation -->
+      <div style="background:rgba(138,76,252,0.08);border-left:3px solid #7C3AED;border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:24px;">
+        <p style="margin:0;font-size:12px;color:#bd9dff;font-weight:600;">How it works</p>
+        <p style="margin:4px 0 0;font-size:11px;color:#757480;line-height:1.5;">
+          After verifying this code, a secure <strong style="color:#abaab7;">JWT access token</strong> 
+          will be issued and stored as an HttpOnly cookie — never exposed to JavaScript. 
+          Your session is encrypted with AES-256.
+        </p>
+      </div>
+
+      <p style="margin:0;font-size:11px;color:#757480;line-height:1.5;">
+        ⚠️ This code is <strong style="color:#f1effd;">single-use</strong> and valid for 5 minutes only.<br>
+        If you did not request this, please ignore this email.
+      </p>
+    </td></tr>
+
+    <!-- Footer -->
+    <tr><td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.05);">
+      <p style="margin:0;font-size:10px;color:#474752;text-align:center;">
+        AgentRoute AI — 8-Agent Agentic Route Intelligence Platform<br>
+        This is an automated security email. Do not reply.
+      </p>
+    </td></tr>
+
+  </table>
+</td></tr>
+</table>
+</body></html>"""
+
+        msg.attach(MIMEText(text, "plain"))
+        msg.attach(MIMEText(html,  "html"))
 
         with smtplib.SMTP(cfg.get("SMTP_HOST", "smtp.gmail.com"),
                           int(cfg.get("SMTP_PORT", 587))) as server:
             server.ehlo()
             server.starttls()
-            server.login(cfg.get("SMTP_USER", ""), cfg.get("SMTP_PASS", ""))
-            server.sendmail(cfg.get("SMTP_USER", ""), to_email, msg.as_string())
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+        logger.info(f"OTP email sent to {to_email[:4]}***")
+        return True
+
     except Exception as e:
-        logger.warning(f"OTP email send failed: {e}")
+        logger.warning(f"OTP email send failed for {to_email[:4]}***: {e}")
+        return False
 
 
 def _set_auth_cookies(response, access_token: str, refresh_token: str):
