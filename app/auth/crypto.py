@@ -88,7 +88,7 @@ def generate_access_token(user_id: int, org_id: int, role: str) -> str:
     """Issue a short-lived JWT access token (15 min default)."""
     ttl = current_app.config.get("JWT_ACCESS_TTL_MINUTES", 15)
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),   # JWT spec requires sub to be a string
         "org": org_id,
         "role": role,
         "type": "access",
@@ -118,6 +118,8 @@ def verify_access_token(token: str) -> dict | None:
         payload = jwt.decode(token, _jwt_secret(), algorithms=["HS256"])
         if payload.get("type") != "access":
             return None
+        # Convert sub back to int for downstream use
+        payload["sub"] = int(payload["sub"])
         return payload
     except jwt.ExpiredSignatureError:
         logger.debug("Access token expired")
